@@ -10,10 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# .env ファイルを読み込む
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -128,12 +133,24 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SESSION_COOKIE_SAMESITE = None
+# Session設定
+SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_SECURE = False  # 開発環境ではFalse、本番環境ではTrue
 SESSION_COOKIE_HTTPONLY = True
 
-# CORS設定を更新
+# CORS設定
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://172.19.224.1:3000",
+    "http://172.19.224.1:3001",
 ]
+
+# Discord OAuth2 設定
+# 環境変数から読み込む（本番環境では .env ファイルを使用）
+DISCORD_CLIENT_ID = os.environ.get('DISCORD_CLIENT_ID', 'YOUR_CLIENT_ID_HERE')
+DISCORD_CLIENT_SECRET = os.environ.get('DISCORD_CLIENT_SECRET', 'YOUR_CLIENT_SECRET_HERE')
+DISCORD_REDIRECT_URI = os.environ.get('DISCORD_REDIRECT_URI', 'http://localhost:3000/auth/discord/callback')
