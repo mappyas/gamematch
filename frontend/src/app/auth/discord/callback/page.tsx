@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { API_ENDPOINTS } from '@/lib/api';
 
-export default function DiscordCallbackPage() {
+function DiscordCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -68,32 +68,50 @@ export default function DiscordCallbackPage() {
   }, [searchParams, router]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-      <div className="text-center">
-        {/* ローディングアニメーション */}
-        <div className="mb-6">
-          {status === 'loading' && (
-            <div className="w-16 h-16 mx-auto border-4 border-[#5865F2] border-t-transparent rounded-full animate-spin" />
-          )}
-          {status === 'success' && (
-            <div className="w-16 h-16 mx-auto bg-green-500 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          )}
-          {status === 'error' && (
-            <div className="w-16 h-16 mx-auto bg-red-500 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-          )}
-        </div>
-
-        <p className="text-xl text-white font-medium">{message}</p>
+    <div className="text-center">
+      {/* ローディングアニメーション */}
+      <div className="mb-6">
+        {status === 'loading' && (
+          <div className="w-16 h-16 mx-auto border-4 border-[#5865F2] border-t-transparent rounded-full animate-spin" />
+        )}
+        {status === 'success' && (
+          <div className="w-16 h-16 mx-auto bg-green-500 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        )}
+        {status === 'error' && (
+          <div className="w-16 h-16 mx-auto bg-red-500 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+        )}
       </div>
+
+      <p className="text-xl text-white font-medium">{message}</p>
     </div>
   );
 }
 
+function LoadingFallback() {
+  return (
+    <div className="text-center">
+      <div className="mb-6">
+        <div className="w-16 h-16 mx-auto border-4 border-[#5865F2] border-t-transparent rounded-full animate-spin" />
+      </div>
+      <p className="text-xl text-white font-medium">読み込み中...</p>
+    </div>
+  );
+}
+
+export default function DiscordCallbackPage() {
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <Suspense fallback={<LoadingFallback />}>
+        <DiscordCallbackContent />
+      </Suspense>
+    </div>
+  );
+}
