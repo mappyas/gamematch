@@ -157,10 +157,15 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Session設定
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = not DEBUG  # 本番環境ではTrue
+# Session設定（クロスドメイン対応）
+SESSION_COOKIE_SAMESITE = 'None'  # クロスドメインで必要
+SESSION_COOKIE_SECURE = True  # SameSite=Noneの場合は必須
 SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7日間
+
+# CSRF Cookie設定（クロスドメイン対応）
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
 
 # CSRF設定（本番環境用）
 CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://gamematch-d31q.vercel.app').split(',')
