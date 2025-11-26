@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -94,6 +93,7 @@ WSGI_APPLICATION = 'project.wsgi.application'
 
 # 本番環境ではPostgreSQLを使用
 if os.environ.get('DATABASE_URL'):
+    import dj_database_url  # 本番環境でのみimport
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
