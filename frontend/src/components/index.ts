@@ -7,3 +7,4 @@ export { Footer } from './Footer';
 export { Modal } from './Modal';
 export { AuthModal } from './AuthModal';
 export { CreateRecruitmentModal } from './CreateRecruitmentModal';
+export { RecruitmentDetailModal } from './RecruitmentDetailModal';

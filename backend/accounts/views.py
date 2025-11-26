@@ -231,6 +231,7 @@ def get_games(request):
                 'icon': game.icon,
                 'color': game.color,
                 'max_players': game.max_players,
+                'platforms': game.platforms_list,  # 対応プラットフォーム
             }
             for game in games
         ]
@@ -490,3 +491,46 @@ def close_recruitment(request, recruitment_id):
         
     except Recruitment.DoesNotExist:
         return JsonResponse({'error': '募集が見つかりません'}, status=404)
+
+
+@csrf_exempt
+def delete_recruitment(request, recruitment_id):
+    """募集を削除（オーナーのみ）"""
+    if request.method != 'DELETE':
+        return JsonResponse({'error': 'DELETE method required'}, status=405)
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'ログインが必要です'}, status=401)
+    
+    try:
+        recruitment = Recruitment.objects.get(id=recruitment_id)
+        
+        if recruitment.owner != request.user:
+            return JsonResponse({'error': '権限がありません'}, status=403)
+        
+        recruitment.delete()
+        
+        return JsonResponse({'success': True})
+        
+    except Recruitment.DoesNotExist:
+        return JsonResponse({'error': '募集が見つかりません'}, status=404)
+
+
+def cleanup_old_recruitments(request):
+    """古い募集を自動削除（Cron Job用）"""
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # 2時間以上経過した募集を削除
+    hours = int(request.GET.get('hours', 2))
+    cutoff_time = timezone.now() - timedelta(hours=hours)
+    
+    old_recruitments = Recruitment.objects.filter(created_at__lt=cutoff_time)
+    count = old_recruitments.count()
+    old_recruitments.delete()
+    
+    return JsonResponse({
+        'success': True,
+        'deleted_count': count,
+        'cutoff_hours': hours,
+    })

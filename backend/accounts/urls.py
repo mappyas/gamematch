@@ -20,8 +20,10 @@ urlpatterns = [
     # 募集
     path('api/recruitments/', views.get_recruitments, name='get_recruitments'),
     path('api/recruitments/create/', views.create_recruitment, name='create_recruitment'),
+    path('api/recruitments/cleanup/', views.cleanup_old_recruitments, name='cleanup_old_recruitments'),
     path('api/recruitments/<int:recruitment_id>/', views.get_recruitment_detail, name='get_recruitment_detail'),
     path('api/recruitments/<int:recruitment_id>/join/', views.join_recruitment, name='join_recruitment'),
     path('api/recruitments/<int:recruitment_id>/leave/', views.leave_recruitment, name='leave_recruitment'),
     path('api/recruitments/<int:recruitment_id>/close/', views.close_recruitment, name='close_recruitment'),
+    path('api/recruitments/<int:recruitment_id>/delete/', views.delete_recruitment, name='delete_recruitment'),
 ]

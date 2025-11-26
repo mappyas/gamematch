@@ -23,4 +23,5 @@ export const getRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recrui
 export const joinRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/join/`;
 export const leaveRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/leave/`;
 export const closeRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/close/`;
+export const deleteRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/delete/`;
 

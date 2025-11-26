@@ -72,6 +72,11 @@ class Game(models.Model):
     icon = models.URLField(max_length=500, blank=True, help_text='ゲームアイコンURL')
     color = models.CharField(max_length=7, default='#6366f1', help_text='テーマカラー（例: #DA292A）')
     max_players = models.PositiveIntegerField(default=4, help_text='最大パーティ人数')
+    platforms = models.CharField(
+        max_length=100, 
+        default='pc,ps,xbox,switch,mobile,crossplay',
+        help_text='対応プラットフォーム（カンマ区切り: pc,ps,xbox,switch,mobile,crossplay）'
+    )
     is_active = models.BooleanField(default=True, help_text='サイトに表示するか')
     
     # 並び順
@@ -84,6 +89,11 @@ class Game(models.Model):
     
     def __str__(self):
         return self.name
+    
+    @property
+    def platforms_list(self):
+        """プラットフォームをリストで返す"""
+        return [p.strip() for p in self.platforms.split(',') if p.strip()]
 
 
 class Profile(models.Model):

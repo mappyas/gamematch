@@ -10,6 +10,7 @@ type Game = {
   name: string;
   color: string;
   max_players: number;
+  platforms: string[];
 };
 
 type CreateRecruitmentModalProps = {
@@ -59,10 +60,19 @@ export function CreateRecruitmentModal({ isOpen, onClose, onSuccess }: CreateRec
     }
   }, [isOpen]);
 
-  // ゲーム選択時に最大人数を更新
+  const availablePlatforms = PLATFORM_OPTIONS.filter(
+    option => selectedGame?.platforms?.includes(option.value) ?? true
+  );
+
+  // ゲーム選択時に最大人数とプラットフォームを更新
   useEffect(() => {
     if (selectedGame) {
       setMaxPlayers(selectedGame.max_players);
+      
+      // 選択中のプラットフォームが対応外ならリセット
+      if (!selectedGame.platforms.includes(platform)) {
+        setPlatform(selectedGame.platforms[0] || 'pc');
+      }
     }
   }, [selectedGame]);
 
@@ -183,7 +193,7 @@ export function CreateRecruitmentModal({ isOpen, onClose, onSuccess }: CreateRec
             プラットフォーム
           </label>
           <div className="grid grid-cols-3 gap-2">
-            {PLATFORM_OPTIONS.map((option) => (
+            {availablePlatforms.map((option) => (
               <button
                 key={option.value}
                 type="button"
@@ -210,7 +220,7 @@ export function CreateRecruitmentModal({ isOpen, onClose, onSuccess }: CreateRec
             <input
               type="range"
               min="2"
-              max="10"
+              max={selectedGame?.max_players || 10}
               value={maxPlayers}
               onChange={(e) => setMaxPlayers(Number(e.target.value))}
               className="flex-1"

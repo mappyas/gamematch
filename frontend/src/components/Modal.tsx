@@ -5,11 +5,12 @@ import { ReactNode } from 'react';
 type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title?: string;
   children: ReactNode;
+  maxWidth?: string;
 };
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' }: ModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -18,13 +19,18 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-gradient-to-br from-[#12121a] to-[#0a0a0f] border border-white/10 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200"
+        className={`bg-gradient-to-br from-[#12121a] to-[#0a0a0f] border border-white/10 rounded-2xl p-8 ${maxWidth} w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-            {title}
-          </h2>
+        {/* ヘッダー（titleがある場合 or 閉じるボタンのみ） */}
+        <div className={`flex justify-between items-center ${title ? 'mb-6' : 'mb-4'}`}>
+          {title ? (
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+              {title}
+            </h2>
+          ) : (
+            <div />
+          )}
 
           <button
             onClick={onClose}

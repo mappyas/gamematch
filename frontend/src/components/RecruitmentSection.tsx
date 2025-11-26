@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, API_URL } from '@/lib/api';
+import { RecruitmentDetailModal } from './RecruitmentDetailModal';
 
 type Game = {
   slug: string;
@@ -130,9 +131,16 @@ function PlatformFilter({
   );
 }
 
-function RecruitmentCard({ recruitment }: { recruitment: Recruitment }) {
+function RecruitmentCard({ 
+  recruitment,
+  onClick 
+}: { 
+  recruitment: Recruitment;
+  onClick: () => void;
+}) {
   return (
     <div
+      onClick={onClick}
       className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] rounded-2xl p-5 border border-white/5 hover:border-white/20 transition-all hover:scale-[1.02] cursor-pointer"
     >
       {/* ゲームタグ */}
@@ -212,9 +220,11 @@ function RecruitmentCard({ recruitment }: { recruitment: Recruitment }) {
 function RecruitmentList({ 
   recruitments,
   isLoading,
+  onCardClick,
 }: { 
   recruitments: Recruitment[];
   isLoading: boolean;
+  onCardClick: (id: number) => void;
 }) {
   return (
     <section className="py-12">
@@ -240,7 +250,11 @@ function RecruitmentList({
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {recruitments.map((recruitment) => (
-              <RecruitmentCard key={recruitment.id} recruitment={recruitment} />
+              <RecruitmentCard 
+                key={recruitment.id} 
+                recruitment={recruitment}
+                onClick={() => onCardClick(recruitment.id)}
+              />
             ))}
           </div>
         )}
@@ -255,6 +269,34 @@ export function RecruitmentSection() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // モーダル用のstate
+  const [selectedRecruitmentId, setSelectedRecruitmentId] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // ユーザー情報
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // ユーザー情報を取得
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.me, {
+          credentials: 'include',
+        });
+        const data = await response.json();
+        if (data.authenticated) {
+          setCurrentUserId(data.user.id);
+          setIsLoggedIn(true);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   // ゲーム一覧を取得
   useEffect(() => {
@@ -271,28 +313,50 @@ export function RecruitmentSection() {
     fetchGames();
   }, []);
 
-  // 募集一覧を取得
-  useEffect(() => {
-    const fetchRecruitments = async () => {
-      setIsLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (selectedGame) params.append('game', selectedGame);
-        if (selectedPlatform) params.append('platform', selectedPlatform);
-        
-        const url = `${API_ENDPOINTS.recruitments}?${params.toString()}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        setRecruitments(data.recruitments || []);
-      } catch (error) {
-        console.error('Failed to fetch recruitments:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // 募集一覧を取得する関数
+  const fetchRecruitments = async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedGame) params.append('game', selectedGame);
+      if (selectedPlatform) params.append('platform', selectedPlatform);
+      
+      const url = `${API_ENDPOINTS.recruitments}?${params.toString()}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      setRecruitments(data.recruitments || []);
+    } catch (error) {
+      console.error('Failed to fetch recruitments:', error);
+    } finally {
+      if (showLoading) setIsLoading(false);
+    }
+  };
 
-    fetchRecruitments();
+  // 初回取得 & フィルター変更時
+  useEffect(() => {
+    fetchRecruitments(true);
   }, [selectedGame, selectedPlatform]);
+
+  // ポーリングで自動更新（5秒ごと）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRecruitments(false); // ローディング表示なしで更新
+    }, 5000);
+
+    return () => clearInterval(interval); // クリーンアップ
+  }, [selectedGame, selectedPlatform]);
+
+  // カードクリック時の処理
+  const handleCardClick = (id: number) => {
+    setSelectedRecruitmentId(id);
+    setIsModalOpen(true);
+  };
+
+  // モーダルを閉じる
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedRecruitmentId(null);
+  };
 
   return (
     <>
@@ -308,6 +372,16 @@ export function RecruitmentSection() {
       <RecruitmentList 
         recruitments={recruitments}
         isLoading={isLoading}
+        onCardClick={handleCardClick}
+      />
+      
+      {/* 募集詳細モーダル */}
+      <RecruitmentDetailModal
+        recruitmentId={selectedRecruitmentId}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        currentUserId={currentUserId}
+        isLoggedIn={isLoggedIn}
       />
     </>
   );
