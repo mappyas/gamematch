@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'corsheaders',
     'accounts',
 ]
@@ -180,6 +181,29 @@ CORS_ALLOWED_ORIGINS = [
 extra_cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
 if extra_cors_origins:
     CORS_ALLOWED_ORIGINS.extend(extra_cors_origins.split(','))
+
+# CORSで許可するHTTPメソッド
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+# CORSで許可するヘッダー
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
 
 # Discord OAuth2 設定
 # 環境変数から読み込む（本番環境では .env ファイルを使用）
