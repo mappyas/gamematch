@@ -173,7 +173,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",
     "http://172.19.224.1:3000",
     "http://172.19.224.1:3001",
+    "https://gamematch-d31q.vercel.app",
 ]
+
+# 環境変数から追加のCORSオリジンを読み込む
+extra_cors_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if extra_cors_origins:
+    CORS_ALLOWED_ORIGINS.extend(extra_cors_origins.split(','))
 
 # Discord OAuth2 設定
 # 環境変数から読み込む（本番環境では .env ファイルを使用）
