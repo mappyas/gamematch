@@ -11,6 +11,12 @@ type Game = {
   color: string;
   max_players: number;
   platforms: string[];
+  ranks: {
+    id: number;
+    rankname: string;
+    rankorder: number;
+    icon: string;
+  }[]
 };
 
 type CreateRecruitmentModalProps = {
@@ -236,13 +242,14 @@ export function CreateRecruitmentModal({ isOpen, onClose, onSuccess }: CreateRec
           <label className="block text-sm font-medium text-gray-300 mb-2">
             ランク条件（任意）
           </label>
-          <input
-            type="text"
+          <select
             value={rank}
-            onChange={(e) => setRank(e.target.value)}
-            placeholder="例: ダイヤ以上、初心者歓迎 など"
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-all"
-          />
+            onChange={(e) => setRank(e.target.value)}>
+              <option value="">指定なし</option>
+              {selectedGame?.ranks.map((r) => (
+                <option key={r.id} value={r.rankname}>{r.rankname}</option>
+              ))}
+          </select>
         </div>
 
         {/* VC有無 */}

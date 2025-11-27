@@ -26,4 +26,10 @@ urlpatterns = [
     path('api/recruitments/<int:recruitment_id>/leave/', views.leave_recruitment, name='leave_recruitment'),
     path('api/recruitments/<int:recruitment_id>/close/', views.close_recruitment, name='close_recruitment'),
     path('api/recruitments/<int:recruitment_id>/delete/', views.delete_recruitment, name='delete_recruitment'),
+    
+    # Riot API 連携
+    path('api/riot/link/', views.link_riot_account, name='link_riot_account'),
+    path('api/riot/account/', views.get_riot_account, name='get_riot_account'),
+    path('api/riot/refresh/', views.refresh_riot_rank, name='refresh_riot_rank'),
+    path('api/riot/unlink/', views.unlink_riot_account, name='unlink_riot_account'),
 ]

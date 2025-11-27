@@ -6,130 +6,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
 import json
 
-from .models import Account, Profile, Game, Recruitment, Participant
 
+from .models import Account, Profile, Game, Recruitment, Participant, GameRank, RiotAccount, LoLRank
 
 # Discord OAuth2 設定
 DISCORD_CLIENT_ID = settings.DISCORD_CLIENT_ID
 DISCORD_CLIENT_SECRET = settings.DISCORD_CLIENT_SECRET
 DISCORD_REDIRECT_URI = settings.DISCORD_REDIRECT_URI
 DISCORD_API_ENDPOINT = 'https://discord.com/api/v10'
-
-
-def discord_login(request):
-    """Discord OAuth2 認証URLを返す"""
-    discord_auth_url = (
-        f"https://discord.com/api/oauth2/authorize"
-        f"?client_id={DISCORD_CLIENT_ID}"
-        f"&redirect_uri={DISCORD_REDIRECT_URI}"
-        f"&response_type=code"
-        f"&scope=identify%20email"
-    )
-    return JsonResponse({'auth_url': discord_auth_url})
-
-
-@csrf_exempt
-def discord_callback(request):
-    """Discord OAuth2 コールバック処理"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-    
-    try:
-        data = json.loads(request.body)
-        code = data.get('code')
-        
-        if not code:
-            return JsonResponse({'error': '認証コードがありません'}, status=400)
-        
-        # 1. 認証コードをアクセストークンに交換
-        # Discord APIを使ってPost　結果をtoken_responseに格納
-        token_response = requests.post(
-            f'{DISCORD_API_ENDPOINT}/oauth2/token',
-            data={
-                'client_id': DISCORD_CLIENT_ID,
-                'client_secret': DISCORD_CLIENT_SECRET,
-                'grant_type': 'authorization_code',
-                'code': code,
-                'redirect_uri': DISCORD_REDIRECT_URI,
-            },
-            headers={
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-        )
-        
-        if token_response.status_code != 200:
-            return JsonResponse({
-                'error': 'トークンの取得に失敗しました',
-                'details': token_response.json()
-            }, status=400)
-        
-        token_data = token_response.json()
-        access_token = token_data['access_token']
-        
-        # 2. アクセストークンでユーザー情報を取得
-        user_response = requests.get(
-            f'{DISCORD_API_ENDPOINT}/users/@me',
-            headers={
-                'Authorization': f'Bearer {access_token}'
-            }
-        )
-        
-        if user_response.status_code != 200:
-            return JsonResponse({
-                'error': 'ユーザー情報の取得に失敗しました'
-            }, status=400)
-        
-        discord_user = user_response.json()
-        discord_id = discord_user['id']
-        discord_username = discord_user.get('global_name') or discord_user['username']
-        email = discord_user.get('email')
-        
-        # アバターURL生成
-        avatar_hash = discord_user.get('avatar')
-        if avatar_hash:
-            avatar_url = f"https://cdn.discordapp.com/avatars/{discord_id}/{avatar_hash}.png"
-        else:
-            avatar_url = None
-        
-        # 3. ユーザーを作成または取得
-        account, created = Account.objects.get_or_create(
-            discord_id=discord_id,
-            defaults={
-                'discord_username': discord_username,
-                'avatar': avatar_url,
-                'email': email,
-            }
-        )
-        
-        # 既存ユーザーの場合、情報を更新
-        if not created:
-            account.discord_username = discord_username
-            account.avatar = avatar_url
-            if email:
-                account.email = email
-            account.save()
-        
-        # 4. Djangoセッションにログイン
-        login(request, account)
-        
-        # 5. レスポンス
-        return JsonResponse({
-            'success': True,
-            'is_new_user': created,
-            'is_profile_complete': account.is_profile_complete,
-            'user': {
-                'id': account.id,
-                'discord_id': account.discord_id,
-                'discord_username': account.discord_username,
-                'avatar': account.avatar,
-            }
-        })
-        
-    except Exception as e:
-        print(f"Discord callback error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
@@ -231,7 +115,14 @@ def get_games(request):
                 'icon': game.icon,
                 'color': game.color,
                 'max_players': game.max_players,
-                'platforms': game.platforms_list,  # 対応プラットフォーム
+                'platforms': game.platforms_list,
+                'ranks':[{
+                    'id': r.id,
+                    'rankname': r.rankname,
+                    'rankorder': r.rankorder,
+                    'icon': r.icon,
+                } for r in game.ranks.all()
+                ]
             }
             for game in games
         ]
@@ -534,3 +425,354 @@ def cleanup_old_recruitments(request):
         'deleted_count': count,
         'cutoff_hours': hours,
     })
+
+# ================================================
+# 外部API連携
+# ================================================
+
+# Discord OAuth2 
+def discord_login(request):
+    """Discord OAuth2 認証URLを返す"""
+    discord_auth_url = (
+        f"https://discord.com/api/oauth2/authorize"
+        f"?client_id={DISCORD_CLIENT_ID}"
+        f"&redirect_uri={DISCORD_REDIRECT_URI}"
+        f"&response_type=code"
+        f"&scope=identify%20email"
+    )
+    return JsonResponse({'auth_url': discord_auth_url})
+
+# Discord OAutch2コールバック処理
+@csrf_exempt
+def discord_callback(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        code = data.get('code')
+        
+        if not code:
+            return JsonResponse({'error': '認証コードがありません'}, status=400)
+        
+        # 1. 認証コードをアクセストークンに交換
+        # Discord APIを使ってPost　結果をtoken_responseに格納
+        token_response = requests.post(
+            f'{DISCORD_API_ENDPOINT}/oauth2/token',
+            data={
+                'client_id': DISCORD_CLIENT_ID,
+                'client_secret': DISCORD_CLIENT_SECRET,
+                'grant_type': 'authorization_code',
+                'code': code,
+                'redirect_uri': DISCORD_REDIRECT_URI,
+            },
+            headers={
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        )
+        
+        if token_response.status_code != 200:
+            return JsonResponse({
+                'error': 'トークンの取得に失敗しました',
+                'details': token_response.json()
+            }, status=400)
+        
+        token_data = token_response.json()
+        access_token = token_data['access_token']
+        
+        # 2. アクセストークンでユーザー情報を取得
+        user_response = requests.get(
+            f'{DISCORD_API_ENDPOINT}/users/@me',
+            headers={
+                'Authorization': f'Bearer {access_token}'
+            }
+        )
+        
+        if user_response.status_code != 200:
+            return JsonResponse({
+                'error': 'ユーザー情報の取得に失敗しました'
+            }, status=400)
+        
+        discord_user = user_response.json()
+        discord_id = discord_user['id']
+        discord_username = discord_user.get('global_name') or discord_user['username']
+        email = discord_user.get('email')
+        
+        # アバターURL生成
+        avatar_hash = discord_user.get('avatar')
+        if avatar_hash:
+            avatar_url = f"https://cdn.discordapp.com/avatars/{discord_id}/{avatar_hash}.png"
+        else:
+            avatar_url = None
+        
+        # 3. get_or_createでユーザーを作成または取得
+        account, created = Account.objects.get_or_create(
+            discord_id=discord_id,
+            defaults={
+                'discord_username': discord_username,
+                'avatar': avatar_url,
+                'email': email,
+            }
+        )
+        
+        # 既存ユーザーの場合、情報を更新
+        if not created:
+            account.discord_username = discord_username
+            account.avatar = avatar_url
+            if email:
+                account.email = email
+            account.save()
+        
+        # 4. Djangoセッションにログイン
+        login(request, account)
+        
+        # 5. レスポンス
+        return JsonResponse({
+            'success': True,
+            'is_new_user': created,
+            'is_profile_complete': account.is_profile_complete,
+            'user': {
+                'id': account.id,
+                'discord_id': account.discord_id,
+                'discord_username': account.discord_username,
+                'avatar': account.avatar,
+            }
+        })
+        
+    except Exception as e:
+        print(f"Discord callback error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+# Riot API
+
+RIOT_API_KEY = settings.RIOT_API_KEY
+
+RIOT_REGIONAL_ENDPOINTS = {
+    'jp': 'https://asia.api.riotgames.com',
+    'kr': 'https://asia.api.riotgames.com',
+    'ap': 'https://asia.api.riotgames.com',
+    'na': 'https://americas.api.riotgames.com',
+    'br': 'https://americas.api.riotgames.com',
+    'latam': 'https://americas.api.riotgames.com',
+    'eu': 'https://europe.api.riotgames.com',
+    'oce': 'https://sea.api.riotgames.com',
+    'me': 'https://europe.api.riotgames.com',
+}
+
+RIOT_PLATFORM_ENDPOINTS = {
+    'jp': 'https://jp1.api.riotgames.com',
+    'kr': 'https://kr.api.riotgames.com',
+    'na': 'https://na1.api.riotgames.com',
+    'br': 'https://br1.api.riotgames.com',
+    'eu': 'https://euw1.api.riotgames.com',
+    'oce': 'https://oc1.api.riotgames.com',
+}
+
+@csrf_exempt
+def link_riot_account(request):
+    """RIOTアカウントをリンク"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'ログインが必要です'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        game_name = data.get('game_name')
+        tag_line = data.get('tag_line')
+        region = data.get('region')
+
+        if not game_name or not tag_line:
+            return JsonResponse({'error': 'RIOT IDの取得に失敗しました'}, status=400)
+
+        regional_endpoint = RIOT_REGIONAL_ENDPOINTS.get(region, RIOT_REGIONAL_ENDPOINTS['jp'])
+        account_response = requests.get(
+            f"{regional_endpoint}/riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}",
+            headers={'X-Riot-Token': RIOT_API_KEY}
+        )
+
+        if account_response.status_code == 404:
+            return JsonResponse({'error': 'Riot アカウントが見つかりません'}, status=404)
+    
+        if account_response.status_code != 200:
+            return JsonResponse({
+                'error': 'RIOT APIエラー',
+                'details': account_response.json()}, status=400)
+
+        riot_data = account_response.json()
+        puuid = riot_data['puuid']
+
+        platform_endpoint = RIOT_PLATFORM_ENDPOINTS.get(region, RIOT_PLATFORM_ENDPOINTS['jp'])
+        summoner_response = requests.get(
+            f"{platform_endpoint}/lol/summoner/v4/summoners/by-puuid/{puuid}",
+            headers={'X-Riot-Token': RIOT_API_KEY}
+        )
+
+        summoner_id = ""
+        lol_account_id = ""
+
+        if summoner_response.status_code == 200:
+            summoner_data = summoner_response.json()
+            summoner_id = summoner_data.get('id', '')
+            lol_account_id = summoner_data.get('accountId', '')
+
+        riot_account, created = RiotAccount.objects.get_or_create(
+            account=request.user,
+            defaults={
+                'puuid': puuid,
+                'game_name': game_name,
+                'tag_line': tag_line,
+                'region': region,
+                'summoner_id': summoner_id,
+                'lol_account_id': lol_account_id,
+            }
+        )
+
+        if summoner_id:
+            fetch_lol_rank(riot_account)
+
+        return JsonResponse({
+            'success': True,
+            'riot_account': {
+                'riot_id': riot_account.riot_id,
+                'puuid': riot_account.puuid,
+                'game_name': riot_account.game_name,
+                'tag_line': riot_account.tag_line,
+                'region': riot_account.region,
+                'is_new': created,
+            }
+        })
+    except Exception as e:
+        print(f"Riot link error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+def fetch_lol_rank(riot_account):
+    """LoL ランク情報を取得して保存"""
+    from .models import LoLRank
+    
+    if not riot_account.summoner_id:
+        return
+    
+    platform_endpoint = RIOT_PLATFORM_ENDPOINTS.get(
+        riot_account.region, 
+        RIOT_PLATFORM_ENDPOINTS['jp']
+    )
+    
+    response = requests.get(
+        f"{platform_endpoint}/lol/league/v4/entries/by-summoner/{riot_account.summoner_id}",
+        headers={'X-Riot-Token': RIOT_API_KEY}
+    )
+    
+    if response.status_code != 200:
+        return
+    
+    rank_data = response.json()
+    
+    for entry in rank_data:
+        queue_type = entry.get('queueType')
+        if queue_type not in ['RANKED_SOLO_5x5', 'RANKED_FLEX_SR']:
+            continue
+        
+        LoLRank.objects.update_or_create(
+            riot_account=riot_account,
+            queue_type=queue_type,
+            defaults={
+                'tier': entry.get('tier', 'IRON'),
+                'rank': entry.get('rank', 'IV'),
+                'league_points': entry.get('leaguePoints', 0),
+                'wins': entry.get('wins', 0),
+                'losses': entry.get('losses', 0),
+            }
+        )
+
+
+def get_riot_account(request):
+    """連携中の Riot アカウント情報を取得"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'ログインが必要です'}, status=401)
+    
+    from .models import RiotAccount
+    
+    try:
+        riot_account = RiotAccount.objects.get(account=request.user)
+        ranks = riot_account.ranks.all()
+        
+        return JsonResponse({
+            'linked': True,
+            'riot_account': {
+                'riot_id': riot_account.riot_id,
+                'game_name': riot_account.game_name,
+                'tag_line': riot_account.tag_line,
+                'region': riot_account.region,
+            },
+            'lol_ranks': [
+                {
+                    'queue_type': r.queue_type,
+                    'queue_type_display': r.get_queue_type_display(),
+                    'tier': r.tier,
+                    'rank': r.rank,
+                    'league_points': r.league_points,
+                    'wins': r.wins,
+                    'losses': r.losses,
+                    'display_rank': r.display_rank,
+                }
+                for r in ranks
+            ]
+        })
+    except RiotAccount.DoesNotExist:
+        return JsonResponse({'linked': False})
+
+
+@csrf_exempt
+def refresh_riot_rank(request):
+    """ランク情報を更新"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'ログインが必要です'}, status=401)
+    
+    from .models import RiotAccount
+    
+    try:
+        riot_account = RiotAccount.objects.get(account=request.user)
+        fetch_lol_rank(riot_account)
+        
+        ranks = riot_account.ranks.all()
+        
+        return JsonResponse({
+            'success': True,
+            'lol_ranks': [
+                {
+                    'queue_type': r.queue_type,
+                    'display_rank': r.display_rank,
+                }
+                for r in ranks
+            ]
+        })
+    except RiotAccount.DoesNotExist:
+        return JsonResponse({'error': 'Riot アカウントが連携されていません'}, status=400)
+
+
+@csrf_exempt
+def unlink_riot_account(request):
+    """Riot アカウント連携を解除"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'ログインが必要です'}, status=401)
+    
+    from .models import RiotAccount
+    
+    try:
+        riot_account = RiotAccount.objects.get(account=request.user)
+        riot_account.delete()
+        return JsonResponse({'success': True})
+    except RiotAccount.DoesNotExist:
+        return JsonResponse({'error': '連携されていません'}, status=400)

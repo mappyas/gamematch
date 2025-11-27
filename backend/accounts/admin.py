@@ -1,7 +1,7 @@
 # accounts/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Account, Profile, Game, GameAccount, Recruitment, Participant
+from .models import Account, Profile, Game, GameAccount, Recruitment, Participant, GameRank
 
 
 @admin.register(Account)
@@ -35,6 +35,12 @@ class GameAdmin(admin.ModelAdmin):
     search_fields = ['name', 'slug']
     ordering = ['order', 'name']
     list_editable = ['is_active', 'order']  # 一覧画面から直接編集可能
+
+@admin.register(GameRank)
+class GameRank(admin.ModelAdmin):
+    list_display = ['game', 'rankname', 'rankorder', 'icon']
+    list_filter = ['game']
+    ordering = ['game', 'rankorder']
 
 
 @admin.register(Profile)

@@ -77,6 +77,7 @@ class Game(models.Model):
         default='pc,ps,xbox,switch,mobile,crossplay',
         help_text='対応プラットフォーム（カンマ区切り: pc,ps,xbox,switch,mobile,crossplay）'
     )
+
     is_active = models.BooleanField(default=True, help_text='サイトに表示するか')
     
     # 並び順
@@ -95,6 +96,19 @@ class Game(models.Model):
         """プラットフォームをリストで返す"""
         return [p.strip() for p in self.platforms.split(',') if p.strip()]
 
+class GameRank(models.Model):
+    """ゲームごとのランク"""
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='ranks')
+    rankname = models.CharField(max_length=100, help_text='ランク名')
+    rankorder = models.PositiveIntegerField()
+    icon = models.URLField(max_length=500, blank=True, help_text='ランクアイコンURL')
+
+    class Meta:
+        ordering = ['rankorder']
+        unique_together = ['game', 'rankname']
+    
+    def __str__(self):
+        return f"{self.game.name} - {self.rankname}"
 
 class Profile(models.Model):
     """ユーザーの追加情報（ゲーム関連）"""
@@ -219,3 +233,89 @@ class Participant(models.Model):
     
     def __str__(self):
         return f"{self.user.discord_username} → {self.recruitment.title}"
+
+# ================================================
+# API連携アカウントモデル
+# ================================================
+class RiotAccount(models.Model):
+    """Riot Gamesアカウント"""
+
+    REGION_CHOICES = [
+        ('ap', 'Asia Pacific'),
+        ('eu', 'Europe'),
+        ('na', 'North America'),
+        ('kr', 'Korea'),
+        ('jp', 'Japan'),
+        ('br', 'Brazil'),
+        ('latam', 'Latin America'),
+        ('oce', 'Oceania'),
+        ('me', 'Middle East'),
+    ]
+
+
+    account = models.OneToOneField(Account, on_delete=models.CASCADE, related_name='riot_account')
+
+    puuid = models.CharField(max_length=100, unique=True, help_text='統一識別子')
+    game_name = models.CharField(max_length=100, help_text='RIOT ID')
+    tag_line = models.CharField(max_length=100, help_text='タグライン')
+
+    # LoL用
+    summoner_id = models.CharField(max_length=100, blank=True,  help_text='サモナーID')
+    lol_account_id = models.CharField(max_length=100, blank=True, help_text='アカウントID')
+
+    region = models.CharField(max_length=10, choices=REGION_CHOICES, help_text='リージョン')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.game_name}#{self.tag_line}"
+    
+    @property
+    def riot_id(self):
+        """RIOT IDを返す(Player#Tag)"""
+        return f"{self.game_name}#{self.tag_line}"
+
+class LoLRank(models.Model):
+    """LoLのランク"""
+
+    QUEUE_TYPES = [
+        ('RANKED_SOLO_5x5', 'ソロ/デュオ'),
+        ('RANKED_FLEX_SR', 'フレックス'),
+    ]
+    
+    TIER_CHOICES = [
+        ('IRON', 'Iron'),
+        ('BRONZE', 'Bronze'),
+        ('SILVER', 'Silver'),
+        ('GOLD', 'Gold'),
+        ('PLATINUM', 'Platinum'),
+        ('EMERALD', 'Emerald'),
+        ('DIAMOND', 'Diamond'),
+        ('MASTER', 'Master'),
+        ('GRANDMASTER', 'Grandmaster'),
+        ('CHALLENGER', 'Challenger'),
+    ]
+
+    riot_account = models.ForeignKey(RiotAccount, on_delete=models.CASCADE, related_name='ranks')
+
+    queue_type = models.CharField(max_length=20, choices=QUEUE_TYPES, help_text='キュー種別')
+    tier = models.CharField(max_length=20, choices=TIER_CHOICES, help_text='ランク')
+    rank = models.CharField(max_length=5, help_text='I, II, III, IV')
+    league_points = models.IntegerField(default=0, help_text='LP')
+    wins = models.IntegerField(default=0)
+    losses = models.IntegerField(default=0)
+    
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['riot_account', 'queue_type']
+    
+    def __str__(self):
+        return f"{self.riot_account.riot_id} - {self.get_queue_type_display()}: {self.tier} {self.rank}"
+
+    @property
+    def display_rank(self):
+        if self.tier in ['MASTER', 'GRANDMASTER', 'CHALLENGER']:
+            return f"{self.tier.capitalize()} {self.league_points}"
+        return f"{self.tier.capitalize()} {self.rank}"
