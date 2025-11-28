@@ -1,7 +1,7 @@
 # accounts/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Account, Profile, Game, GameAccount, Recruitment, Participant, GameRank
+from .models import Account, Profile, Game, GameAccount, Recruitment, Participant, GameRank, RiotAccount, LoLRank
 
 
 @admin.register(Account)
@@ -74,3 +74,11 @@ class ParticipantAdmin(admin.ModelAdmin):
     list_display = ['user', 'recruitment', 'status', 'joined_at']
     list_filter = ['status']
     search_fields = ['user__discord_username', 'recruitment__title']
+
+@admin.register(RiotAccount)
+class RiotAccountAdmin(admin.ModelAdmin):
+    list_display = ['account', 'puuid', 'game_name', 'tag_line', 'region', 'created_at']
+
+@admin.register(LoLRank)
+class LoLRankAdmin(admin.ModelAdmin):
+    list_display = ['riot_account', 'queue_type', 'tier', 'rank', 'league_points', 'wins', 'losses', 'updated_at']

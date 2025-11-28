@@ -81,7 +81,10 @@ export function Navbar() {
                     プロフィールを設定
                   </Link>
                 )}
-                <div className="flex items-center gap-3">
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                >
                   {user.avatar ? (
                     <img
                       src={user.avatar}
@@ -92,7 +95,7 @@ export function Navbar() {
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500" />
                   )}
                   <span className="text-sm text-gray-300">{user.discord_username}</span>
-                </div>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"

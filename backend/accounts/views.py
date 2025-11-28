@@ -28,17 +28,29 @@ def create_profile(request):
     try:
         data = json.loads(request.body)
         
-        display_name = data.get('display_name')
+        display_name = data.get('display_name', '').strip()
         if not display_name:
             return JsonResponse({'error': '表示名は必須です'}, status=400)
+        
+        if len(display_name) > 50:
+            return JsonResponse({'error': '表示名は50文字以内で入力してください'}, status=400)
+        
+        bio = data.get('bio', '').strip()
+        if len(bio) > 500:
+            return JsonResponse({'error': '自己紹介は500文字以内で入力してください'}, status=400)
+        
+        platform = data.get('platform', 'pc')
+        valid_platforms = ['pc', 'ps', 'xbox', 'switch', 'mobile']
+        if platform not in valid_platforms:
+            return JsonResponse({'error': '無効なプラットフォームです'}, status=400)
         
         # プロフィール作成または更新
         profile, created = Profile.objects.update_or_create(
             account=request.user,
             defaults={
                 'display_name': display_name,
-                'platform': data.get('platform', 'pc'),
-                'bio': data.get('bio', ''),
+                'platform': platform,
+                'bio': bio,
             }
         )
         
@@ -46,19 +58,19 @@ def create_profile(request):
         request.user.is_profile_complete = True
         request.user.save()
         
+        from .serializers import serialize_profile
         return JsonResponse({
             'success': True,
-            'profile': {
-                'display_name': profile.display_name,
-                'main_game': profile.main_game.name if profile.main_game else None,
-                'platform': profile.platform,
-                'bio': profile.bio,
-            }
+            'profile': serialize_profile(profile),
         })
         
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '無効なJSON形式です'}, status=400)
     except Exception as e:
-        print(f"Profile creation error: {str(e)}")
-        return JsonResponse({'error': str(e)}, status=500)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Profile creation error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'プロフィールの作成に失敗しました'}, status=500)
 
 
 def get_current_user(request):
@@ -66,29 +78,25 @@ def get_current_user(request):
     if not request.user.is_authenticated:
         return JsonResponse({'authenticated': False})
     
-    user = request.user
-    profile_data = None
-    
-    if hasattr(user, 'profile'):
-        profile = user.profile
-        profile_data = {
-            'display_name': profile.display_name,
-            'main_game': profile.main_game.name if profile.main_game else None,
-            'platform': profile.platform,
-            'bio': profile.bio,
-        }
-    
-    return JsonResponse({
-        'authenticated': True,
-        'user': {
-            'id': user.id,
-            'discord_id': user.discord_id,
-            'discord_username': user.discord_username,
-            'avatar': user.avatar,
-            'is_profile_complete': user.is_profile_complete,
-        },
-        'profile': profile_data,
-    })
+    try:
+        from .serializers import serialize_user, serialize_profile
+        
+        user = request.user
+        profile_data = None
+        
+        if hasattr(user, 'profile'):
+            profile_data = serialize_profile(user.profile)
+        
+        return JsonResponse({
+            'authenticated': True,
+            'user': serialize_user(user, include_email=True),
+            'profile': profile_data,
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Get current user error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'ユーザー情報の取得に失敗しました'}, status=500)
 
 
 @csrf_exempt
@@ -97,6 +105,22 @@ def logout_user(request):
     from django.contrib.auth import logout
     logout(request)
     return JsonResponse({'success': True})
+
+
+def get_profile_detail(request):
+    """マイページ用の詳細プロフィール情報を取得"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'ログインが必要です'}, status=401)
+    
+    try:
+        from .serializers import serialize_profile_detail
+        data = serialize_profile_detail(request.user)
+        return JsonResponse(data)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Profile detail error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'プロフィール情報の取得に失敗しました'}, status=500)
 
 
 # ============================================
@@ -131,88 +155,59 @@ def get_games(request):
 
 def get_recruitments(request):
     """募集一覧を取得"""
-    recruitments = Recruitment.objects.filter(status='open').select_related('game', 'owner')
-    
-    # フィルタリング
-    game_slug = request.GET.get('game')
-    platform = request.GET.get('platform')
-    
-    if game_slug:
-        recruitments = recruitments.filter(game__slug=game_slug)
-    if platform:
-        recruitments = recruitments.filter(platform=platform)
-    
-    return JsonResponse({
-        'recruitments': [
-            {
-                'id': r.id,
-                'title': r.title,
-                'description': r.description,
-                'game': {
-                    'slug': r.game.slug,
-                    'name': r.game.name,
-                    'color': r.game.color,
-                },
-                'platform': r.platform,
-                'max_players': r.max_players,
-                'current_players': r.current_players,
-                'rank': r.rank,
-                'voice_chat': r.voice_chat,
-                'owner': {
-                    'id': r.owner.id,
-                    'discord_username': r.owner.discord_username,
-                    'avatar': r.owner.avatar,
-                },
-                'created_at': r.created_at.isoformat(),
-                'is_full': r.is_full,
-            }
-            for r in recruitments
-        ]
-    })
+    try:
+        from .serializers import serialize_recruitment
+        
+        recruitments = Recruitment.objects.filter(
+            status='open'
+        ).select_related('game', 'owner').order_by('-created_at')
+        
+        # フィルタリング
+        game_slug = request.GET.get('game')
+        platform = request.GET.get('platform')
+        
+        if game_slug:
+            recruitments = recruitments.filter(game__slug=game_slug)
+        if platform:
+            recruitments = recruitments.filter(platform=platform)
+        
+        # 最大200件まで
+        recruitments = recruitments[:200]
+        
+        return JsonResponse({
+            'recruitments': [
+                serialize_recruitment(r, include_owner=True) 
+                for r in recruitments
+            ]
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Get recruitments error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '募集一覧の取得に失敗しました'}, status=500)
 
 
 def get_recruitment_detail(request, recruitment_id):
     """募集の詳細を取得"""
     try:
+        from .serializers import serialize_recruitment
+        
         r = Recruitment.objects.select_related('game', 'owner').get(id=recruitment_id)
-        participants = r.participants.filter(status='joined').select_related('user')
         
         return JsonResponse({
-            'recruitment': {
-                'id': r.id,
-                'title': r.title,
-                'description': r.description,
-                'game': {
-                    'slug': r.game.slug,
-                    'name': r.game.name,
-                    'color': r.game.color,
-                },
-                'platform': r.platform,
-                'max_players': r.max_players,
-                'current_players': r.current_players,
-                'rank': r.rank,
-                'voice_chat': r.voice_chat,
-                'status': r.status,
-                'owner': {
-                    'id': r.owner.id,
-                    'discord_username': r.owner.discord_username,
-                    'avatar': r.owner.avatar,
-                },
-                'participants': [
-                    {
-                        'id': p.user.id,
-                        'discord_username': p.user.discord_username,
-                        'avatar': p.user.avatar,
-                        'joined_at': p.joined_at.isoformat(),
-                    }
-                    for p in participants
-                ],
-                'created_at': r.created_at.isoformat(),
-                'is_full': r.is_full,
-            }
+            'recruitment': serialize_recruitment(
+                r, 
+                include_owner=True, 
+                include_participants=True
+            )
         })
     except Recruitment.DoesNotExist:
         return JsonResponse({'error': '募集が見つかりません'}, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Get recruitment detail error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '募集詳細の取得に失敗しました'}, status=500)
 
 
 @csrf_exempt
@@ -229,39 +224,57 @@ def create_recruitment(request):
         
         # バリデーション
         game_id = data.get('game_id')
-        title = data.get('title')
+        title = data.get('title', '').strip()
         
-        if not game_id or not title:
-            return JsonResponse({'error': 'ゲームとタイトルは必須です'}, status=400)
+        if not game_id:
+            return JsonResponse({'error': 'ゲームは必須です'}, status=400)
+        
+        if not title:
+            return JsonResponse({'error': 'タイトルは必須です'}, status=400)
+        
+        if len(title) > 100:
+            return JsonResponse({'error': 'タイトルは100文字以内で入力してください'}, status=400)
+        
+        description = data.get('description', '').strip()
+        if len(description) > 500:
+            return JsonResponse({'error': '説明は500文字以内で入力してください'}, status=400)
         
         try:
-            game = Game.objects.get(id=game_id)
+            game = Game.objects.get(id=game_id, is_active=True)
         except Game.DoesNotExist:
             return JsonResponse({'error': 'ゲームが見つかりません'}, status=400)
+        
+        platform = data.get('platform', 'pc')
+        max_players = data.get('max_players', game.max_players)
+        
+        if not isinstance(max_players, int) or max_players < 2 or max_players > 100:
+            return JsonResponse({'error': '募集人数は2〜100人の間で指定してください'}, status=400)
         
         # 募集作成
         recruitment = Recruitment.objects.create(
             owner=request.user,
             game=game,
             title=title,
-            description=data.get('description', ''),
-            platform=data.get('platform', 'pc'),
-            max_players=data.get('max_players', game.max_players),
+            description=description,
+            platform=platform,
+            max_players=max_players,
             rank=data.get('rank', ''),
             voice_chat=data.get('voice_chat', False),
         )
         
+        from .serializers import serialize_recruitment
         return JsonResponse({
             'success': True,
-            'recruitment': {
-                'id': recruitment.id,
-                'title': recruitment.title,
-            }
+            'recruitment': serialize_recruitment(recruitment, include_owner=False),
         }, status=201)
         
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '無効なJSON形式です'}, status=400)
     except Exception as e:
-        print(f"Recruitment creation error: {str(e)}")
-        return JsonResponse({'error': str(e)}, status=500)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Recruitment creation error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '募集の作成に失敗しました'}, status=500)
 
 
 @csrf_exempt
@@ -274,7 +287,7 @@ def join_recruitment(request, recruitment_id):
         return JsonResponse({'error': 'ログインが必要です'}, status=401)
     
     try:
-        recruitment = Recruitment.objects.get(id=recruitment_id)
+        recruitment = Recruitment.objects.select_related('game', 'owner').get(id=recruitment_id)
         
         # チェック
         if recruitment.owner == request.user:
@@ -286,23 +299,23 @@ def join_recruitment(request, recruitment_id):
         if recruitment.is_full:
             return JsonResponse({'error': '定員に達しています'}, status=400)
         
-        # 既に参加していないかチェック
-        existing = Participant.objects.filter(
+        # 既に参加していないかチェック（離脱した場合も含む）
+        participant, created = Participant.objects.get_or_create(
             recruitment=recruitment,
             user=request.user,
-            status='joined'
-        ).exists()
-        
-        if existing:
-            return JsonResponse({'error': '既に参加しています'}, status=400)
-        
-        # 参加
-        Participant.objects.create(
-            recruitment=recruitment,
-            user=request.user,
+            defaults={'status': 'joined'}
         )
         
+        if not created:
+            if participant.status == 'joined':
+                return JsonResponse({'error': '既に参加しています'}, status=400)
+            else:
+                # 離脱していた場合は再参加
+                participant.status = 'joined'
+                participant.save()
+        
         # 定員に達したら自動で締め切り
+        recruitment.refresh_from_db()
         if recruitment.is_full:
             recruitment.status = 'closed'
             recruitment.save()
@@ -310,13 +323,16 @@ def join_recruitment(request, recruitment_id):
         return JsonResponse({
             'success': True,
             'current_players': recruitment.current_players,
+            'is_full': recruitment.is_full,
         })
         
     except Recruitment.DoesNotExist:
         return JsonResponse({'error': '募集が見つかりません'}, status=404)
     except Exception as e:
-        print(f"Join recruitment error: {str(e)}")
-        return JsonResponse({'error': str(e)}, status=500)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Join recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '参加処理に失敗しました'}, status=500)
 
 
 @csrf_exempt
@@ -329,7 +345,7 @@ def leave_recruitment(request, recruitment_id):
         return JsonResponse({'error': 'ログインが必要です'}, status=401)
     
     try:
-        recruitment = Recruitment.objects.get(id=recruitment_id)
+        recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
         
         participant = Participant.objects.filter(
             recruitment=recruitment,
@@ -344,6 +360,7 @@ def leave_recruitment(request, recruitment_id):
         participant.save()
         
         # 締め切りだった場合、再度募集中に
+        recruitment.refresh_from_db()
         if recruitment.status == 'closed' and not recruitment.is_full:
             recruitment.status = 'open'
             recruitment.save()
@@ -351,13 +368,16 @@ def leave_recruitment(request, recruitment_id):
         return JsonResponse({
             'success': True,
             'current_players': recruitment.current_players,
+            'is_full': recruitment.is_full,
         })
         
     except Recruitment.DoesNotExist:
         return JsonResponse({'error': '募集が見つかりません'}, status=404)
     except Exception as e:
-        print(f"Leave recruitment error: {str(e)}")
-        return JsonResponse({'error': str(e)}, status=500)
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Leave recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '離脱処理に失敗しました'}, status=500)
 
 
 @csrf_exempt
@@ -370,10 +390,13 @@ def close_recruitment(request, recruitment_id):
         return JsonResponse({'error': 'ログインが必要です'}, status=401)
     
     try:
-        recruitment = Recruitment.objects.get(id=recruitment_id)
+        recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
         
         if recruitment.owner != request.user:
             return JsonResponse({'error': '権限がありません'}, status=403)
+        
+        if recruitment.status == 'closed':
+            return JsonResponse({'error': '既に締め切られています'}, status=400)
         
         recruitment.status = 'closed'
         recruitment.save()
@@ -382,6 +405,11 @@ def close_recruitment(request, recruitment_id):
         
     except Recruitment.DoesNotExist:
         return JsonResponse({'error': '募集が見つかりません'}, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Close recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '締切処理に失敗しました'}, status=500)
 
 
 @csrf_exempt
@@ -394,7 +422,7 @@ def delete_recruitment(request, recruitment_id):
         return JsonResponse({'error': 'ログインが必要です'}, status=401)
     
     try:
-        recruitment = Recruitment.objects.get(id=recruitment_id)
+        recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
         
         if recruitment.owner != request.user:
             return JsonResponse({'error': '権限がありません'}, status=403)
@@ -405,6 +433,11 @@ def delete_recruitment(request, recruitment_id):
         
     except Recruitment.DoesNotExist:
         return JsonResponse({'error': '募集が見つかりません'}, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Delete recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '削除処理に失敗しました'}, status=500)
 
 
 def cleanup_old_recruitments(request):
@@ -630,10 +663,8 @@ def link_riot_account(request):
                 'lol_account_id': lol_account_id,
             }
         )
-
-        if summoner_id:
-            fetch_lol_rank(riot_account)
-
+        fetch_lol_rank(riot_account)
+        
         return JsonResponse({
             'success': True,
             'riot_account': {
@@ -645,6 +676,8 @@ def link_riot_account(request):
                 'is_new': created,
             }
         })
+
+
     except Exception as e:
         print(f"Riot link error: {str(e)}")
         import traceback
@@ -653,25 +686,24 @@ def link_riot_account(request):
 
 def fetch_lol_rank(riot_account):
     """LoL ランク情報を取得して保存"""
-    from .models import LoLRank
-    
-    if not riot_account.summoner_id:
-        return
+    from .models import LoLRank,RiotAccount
     
     platform_endpoint = RIOT_PLATFORM_ENDPOINTS.get(
         riot_account.region, 
         RIOT_PLATFORM_ENDPOINTS['jp']
     )
-    
+    print("aaa")
+    print(riot_account)
     response = requests.get(
-        f"{platform_endpoint}/lol/league/v4/entries/by-summoner/{riot_account.summoner_id}",
+        f"{platform_endpoint}/lol/league/v4/entries/by-puuid/{riot_account.puuid}",
         headers={'X-Riot-Token': RIOT_API_KEY}
     )
     
     if response.status_code != 200:
         return
-    
+
     rank_data = response.json()
+    print(rank_data)
     
     for entry in rank_data:
         queue_type = entry.get('queueType')

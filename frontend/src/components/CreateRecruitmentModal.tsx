@@ -243,6 +243,7 @@ export function CreateRecruitmentModal({ isOpen, onClose, onSuccess }: CreateRec
             ランク条件（任意）
           </label>
           <select
+            className = "text-gray-400"
             value={rank}
             onChange={(e) => setRank(e.target.value)}>
               <option value="">指定なし</option>

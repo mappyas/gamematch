@@ -11,6 +11,7 @@ export const API_ENDPOINTS = {
   me: `${API_URL}/accounts/api/me/`,
   logout: `${API_URL}/accounts/api/logout/`,
   profile: `${API_URL}/accounts/api/profile/`,
+  profileDetail: `${API_URL}/accounts/api/profile/detail/`,
   
   // ゲーム・募集
   games: `${API_URL}/accounts/api/games/`,
