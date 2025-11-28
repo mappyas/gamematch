@@ -12,46 +12,41 @@ export const dynamic = 'force-dynamic';
 /**
  * プロフィールデータを取得する
  * サーバーサイドでCookieを使って認証情報を渡す
+ * @returns ProfileData または null（未認証の場合）
  */
-async function getProfileData(): Promise<ProfileData> {
+async function getProfileData(): Promise<ProfileData | null> {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore
     .getAll()
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join('; ');
 
-  // デバッグ: APIのURLを確認
   console.log('[Profile] API URL:', API_ENDPOINTS.profileDetail);
   console.log('[Profile] Cookie exists:', !!cookieHeader);
 
-  try {
-    const response = await fetch(API_ENDPOINTS.profileDetail, {
-      headers: cookieHeader
-        ? {
-            Cookie: cookieHeader,
-          }
-        : undefined,
-      cache: 'no-store',
-    });
+  const response = await fetch(API_ENDPOINTS.profileDetail, {
+    headers: cookieHeader
+      ? {
+          Cookie: cookieHeader,
+        }
+      : undefined,
+    cache: 'no-store',
+  });
 
-    // デバッグ: レスポンス状態を確認
-    console.log('[Profile] Response status:', response.status);
+  console.log('[Profile] Response status:', response.status);
 
-    if (response.status === 401) {
-      redirect('/');
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Profile] Error response:', errorText);
-      throw new Error(`プロフィールの取得に失敗しました (${response.status})`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('[Profile] Fetch error:', error);
-    throw error;
+  // 未認証の場合はnullを返す（リダイレクトは呼び出し側で処理）
+  if (response.status === 401) {
+    return null;
   }
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[Profile] Error response:', errorText);
+    throw new Error(`プロフィールの取得に失敗しました (${response.status})`);
+  }
+
+  return await response.json();
 }
 
 /**
@@ -59,7 +54,7 @@ async function getProfileData(): Promise<ProfileData> {
  * ユーザーの基本情報、作成した募集、参加した募集を表示
  */
 export default async function ProfilePage() {
-  let profileData: ProfileData;
+  let profileData: ProfileData | null;
 
   try {
     profileData = await getProfileData();
@@ -78,6 +73,11 @@ export default async function ProfilePage() {
         </div>
       </div>
     );
+  }
+
+  // 未認証の場合はホームにリダイレクト（try-catchの外で実行）
+  if (!profileData) {
+    redirect('/');
   }
 
   const { user, profile, created_recruitments, participated_recruitments, riot_account } =
