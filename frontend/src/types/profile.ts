@@ -7,6 +7,13 @@ export type Game = {
   color: string;
 };
 
+// 参加者型
+export type Participant = {
+  id: number;
+  discord_username: string;
+  avatar: string | null;
+};
+
 // 募集型
 export type Recruitment = {
   id: number;
@@ -25,8 +32,9 @@ export type Recruitment = {
   owner?: {
     id: number;
     discord_username: string;
-    avatar: string;
+    avatar: string | null;
   };
+  participants?: Participant[];  // 参加者リスト追加
   joined_at?: string;
 };
 

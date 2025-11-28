@@ -14,8 +14,6 @@ const platforms = [
   { id: 'mobile', name: 'Mobile', icon: '📱' },
 ];
 
-
-
 /**
  * 統合検索フィルターコンポーネント
  * テキスト検索、ゲーム選択、プラットフォーム選択を一つにまとめたUI

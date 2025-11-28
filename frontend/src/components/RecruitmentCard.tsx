@@ -99,31 +99,76 @@ export function RecruitmentCard({
           )}
         </div>
 
-        {/* フッター */}
+        {/* フッター - 参加者アイコン */}
         <div className="flex items-center justify-between pt-3 border-t border-white/5">
-          {showOwner && recruitment.owner && (
-            <div className="flex items-center gap-2">
-              {recruitment.owner.avatar ? (
-                <img
-                  src={recruitment.owner.avatar}
-                  alt={recruitment.owner.discord_username}
-                  className="w-6 h-6 rounded-full"
-                />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500" />
-              )}
-              <span className="text-sm text-gray-400">
-                {recruitment.owner.discord_username}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
+            {/* オーナーアイコン（王冠付き） */}
+            {recruitment.owner && (
+              <div className="relative" title={recruitment.owner.discord_username}>
+                {recruitment.owner.avatar ? (
+                  <img
+                    src={recruitment.owner.avatar}
+                    alt={recruitment.owner.discord_username}
+                    className="w-8 h-8 rounded-full border-2 border-yellow-500"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 border-2 border-yellow-500" />
+                )}
+                <span className="absolute -top-1 -right-1 text-xs">👑</span>
+              </div>
+            )}
+
+            {/* 参加者アイコン（重ねて表示） */}
+            {recruitment.participants && recruitment.participants.length > 0 && (
+              <div className="flex -space-x-2 ml-2">
+                {recruitment.participants.slice(0, 4).map((participant) => (
+                  <div key={participant.id} title={participant.discord_username}>
+                    {participant.avatar ? (
+                      <img
+                        src={participant.avatar}
+                        alt={participant.discord_username}
+                        className="w-7 h-7 rounded-full border-2 border-gray-800"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-400 to-gray-600 border-2 border-gray-800" />
+                    )}
+                  </div>
+                ))}
+                {/* 残り人数表示（5人以上の場合） */}
+                {recruitment.participants.length > 4 && (
+                  <div className="w-7 h-7 rounded-full bg-gray-700 border-2 border-gray-800 flex items-center justify-center text-xs text-gray-300">
+                    +{recruitment.participants.length - 4}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 空きスロット表示 */}
+            {(() => {
+              const emptySlots = recruitment.max_players - recruitment.current_players;
+              if (emptySlots > 0 && emptySlots <= 3) {
+                return (
+                  <div className="flex -space-x-2 ml-2">
+                    {Array.from({ length: emptySlots }).map((_, i) => (
+                      <div
+                        key={`empty-${i}`}
+                        className="w-7 h-7 rounded-full border-2 border-dashed border-gray-600 bg-gray-800/50"
+                      />
+                    ))}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+
+          {/* 人数カウント */}
+          <div className="flex items-center gap-1 text-sm">
             <span className="text-cyan-400 font-bold">
               {recruitment.current_players}
             </span>
             <span className="text-gray-500">/</span>
             <span className="text-gray-400">{recruitment.max_players}</span>
-            <span className="text-xs text-gray-500 ml-1">人</span>
           </div>
         </div>
 

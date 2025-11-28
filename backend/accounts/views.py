@@ -81,7 +81,7 @@ def get_current_user(request):
     try:
         from .serializers import serialize_user, serialize_profile
         
-        user = request.user
+        user = request.user #Djangoが勝手にセット
         profile_data = None
         
         if hasattr(user, 'profile'):
@@ -157,10 +157,16 @@ def get_recruitments(request):
     """募集一覧を取得"""
     try:
         from .serializers import serialize_recruitment
+        from django.db.models import Prefetch
         
         recruitments = Recruitment.objects.filter(
             status='open'
-        ).select_related('game', 'owner').order_by('-created_at')
+        ).select_related('game', 'owner').prefetch_related(
+            Prefetch(
+                'participants',
+                queryset=Participant.objects.filter(status='joined').select_related('user')
+            )
+        ).order_by('-created_at')
         
         # フィルタリング
         game_slug = request.GET.get('game')
@@ -176,7 +182,7 @@ def get_recruitments(request):
         
         return JsonResponse({
             'recruitments': [
-                serialize_recruitment(r, include_owner=True) 
+                serialize_recruitment(r, include_owner=True, include_participants=True) 
                 for r in recruitments
             ]
         })
