@@ -30,6 +30,13 @@ export type Recruitment = {
   joined_at?: string;
 };
 
+// 検索型
+export type SearchFilters = {
+  searchQuery: string;
+  selectedGame: string | null;
+  selectedPlatform: string | null;
+};
+
 // LoLランク型
 export type LoLRank = {
   queue_type: string;

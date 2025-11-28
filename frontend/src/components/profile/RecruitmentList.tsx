@@ -34,6 +34,7 @@ export function RecruitmentList({
             <RecruitmentCard
               key={recruitment.id}
               recruitment={recruitment}
+              variant="detailed"
               showOwner={showOwner}
             />
           ))}
