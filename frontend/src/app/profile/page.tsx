@@ -1,83 +1,88 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { ProfileCard, RiotAccountCard, RecruitmentList } from '@/components/profile';
 import { API_ENDPOINTS } from '@/lib/api';
 import { ProfileData } from '@/types';
 
-// 動的レンダリングを強制（cookies使用のため）
-export const dynamic = 'force-dynamic';
-
-/**
- * プロフィールデータを取得する
- * サーバーサイドでCookieを使って認証情報を渡す
- * @returns ProfileData または null（未認証の場合）
- */
-async function getProfileData(): Promise<ProfileData | null> {
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map((cookie) => `${cookie.name}=${cookie.value}`)
-    .join('; ');
-
-  console.log('[Profile] API URL:', API_ENDPOINTS.profileDetail);
-  console.log('[Profile] Cookie exists:', !!cookieHeader);
-
-  const response = await fetch(API_ENDPOINTS.profileDetail, {
-    headers: cookieHeader
-      ? {
-          Cookie: cookieHeader,
-        }
-      : undefined,
-    cache: 'no-store',
-  });
-
-  console.log('[Profile] Response status:', response.status);
-
-  // 未認証の場合はnullを返す（リダイレクトは呼び出し側で処理）
-  if (response.status === 401) {
-    return null;
-  }
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[Profile] Error response:', errorText);
-    throw new Error(`プロフィールの取得に失敗しました (${response.status})`);
-  }
-
-  return await response.json();
-}
-
 /**
  * プロフィールページ
  * ユーザーの基本情報、作成した募集、参加した募集を表示
  */
-export default async function ProfilePage() {
-  let profileData: ProfileData | null;
+export default function ProfilePage() {
+  const router = useRouter();
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  try {
-    profileData = await getProfileData();
-  } catch (error) {
-    console.error('Profile fetch error:', error);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.profileDetail, {
+          credentials: 'include', // ← Cookieを送信
+        });
+
+        console.log('[Profile] Response status:', response.status);
+
+        if (response.status === 401) {
+          // 未認証の場合はホームにリダイレクト
+          router.push('/');
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`プロフィールの取得に失敗しました (${response.status})`);
+        }
+
+        const data = await response.json();
+        setProfileData(data);
+      } catch (err) {
+        console.error('Profile fetch error:', err);
+        setError(err instanceof Error ? err.message : 'エラーが発生しました');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [router]);
+
+  // ローディング中
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">プロフィールの取得に失敗しました</p>
-          <Link
-            href="/"
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-lg transition-colors"
-          >
-            ホームに戻る
-          </Link>
+      <div className="min-h-screen bg-[#0a0a0f] text-white">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-gray-400">読み込み中...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  // 未認証の場合はホームにリダイレクト（try-catchの外で実行）
-  if (!profileData) {
-    redirect('/');
+  // エラー時
+  if (error || !profileData) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] text-white">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p className="text-red-400 mb-4">{error || 'プロフィールの取得に失敗しました'}</p>
+            <Link
+              href="/"
+              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-lg transition-colors"
+            >
+              ホームに戻る
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const { user, profile, created_recruitments, participated_recruitments, riot_account } =
