@@ -6,6 +6,9 @@ import { ProfileCard, RiotAccountCard, RecruitmentList } from '@/components/prof
 import { API_ENDPOINTS } from '@/lib/api';
 import { ProfileData } from '@/types';
 
+// 動的レンダリングを強制（cookies使用のため）
+export const dynamic = 'force-dynamic';
+
 /**
  * プロフィールデータを取得する
  * サーバーサイドでCookieを使って認証情報を渡す
@@ -17,24 +20,38 @@ async function getProfileData(): Promise<ProfileData> {
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join('; ');
 
-  const response = await fetch(API_ENDPOINTS.profileDetail, {
-    headers: cookieHeader
-      ? {
-          Cookie: cookieHeader,
-        }
-      : undefined,
-    cache: 'no-store', // 常に最新データを取得
-  });
+  // デバッグ: APIのURLを確認
+  console.log('[Profile] API URL:', API_ENDPOINTS.profileDetail);
+  console.log('[Profile] Cookie exists:', !!cookieHeader);
 
-  if (response.status === 401) {
-    redirect('/');
+  try {
+    const response = await fetch(API_ENDPOINTS.profileDetail, {
+      headers: cookieHeader
+        ? {
+            Cookie: cookieHeader,
+          }
+        : undefined,
+      cache: 'no-store',
+    });
+
+    // デバッグ: レスポンス状態を確認
+    console.log('[Profile] Response status:', response.status);
+
+    if (response.status === 401) {
+      redirect('/');
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Profile] Error response:', errorText);
+      throw new Error(`プロフィールの取得に失敗しました (${response.status})`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('[Profile] Fetch error:', error);
+    throw error;
   }
-
-  if (!response.ok) {
-    throw new Error('プロフィールの取得に失敗しました');
-  }
-
-  return await response.json();
 }
 
 /**
