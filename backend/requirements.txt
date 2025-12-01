@@ -4,9 +4,17 @@ django-cors-headers==4.4.0
 python-dotenv==1.0.1
 requests==2.32.4
 
+# Discord Bot
+discord.py==2.3.2
+aiohttp==3.9.1
+
+# WebSocket (Django Channels)
+channels==4.0.0
+channels-redis==4.1.0
+daphne==4.0.0
+
 # 本番環境用
 gunicorn==21.2.0
 whitenoise==6.6.0
 dj-database-url==2.1.0
 psycopg[binary]==3.2.3
-

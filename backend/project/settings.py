@@ -35,6 +35,7 @@ if RENDER_EXTERNAL_HOSTNAME:
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',  # WebSocket用（ASGIサーバー）- 一番上に配置
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'channels',  # WebSocket用（Django Channels）
     'accounts',
 ]
 
@@ -80,6 +82,27 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'project.wsgi.application'
+
+# ASGI設定（WebSocket用）
+ASGI_APPLICATION = 'project.asgi.application'
+
+# Django Channels設定（WebSocketのバックエンド）
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [(os.environ.get('REDIS_HOST', '127.0.0.1'), int(os.environ.get('REDIS_PORT', 6379)))],
+        },
+    },
+}
+
+# 開発環境でRedisがない場合はインメモリバックエンドを使用
+if DEBUG and not os.environ.get('REDIS_HOST'):
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 
 # Database設定

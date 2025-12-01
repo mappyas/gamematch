@@ -6,8 +6,9 @@
 from typing import Optional, Dict, Any, List
 from .models import (
     Account, Profile, Game, GameAccount, Recruitment, 
-    Participant, RiotAccount, LoLRank
+    Participant, RiotAccount, LoLRank, DiscordRecruitment
 )
+from rest_framework import serializers
 
 
 def serialize_game(game: Game) -> Dict[str, Any]:
@@ -180,3 +181,40 @@ def serialize_profile_detail(user: Account) -> Dict[str, Any]:
         'participated_recruitments': participated_recruitments_data,
         'riot_account': riot_data,
     }
+
+class DiscordRecruitmentSerializer(serializers.ModelSerializer):
+    """Discord募集のシリアライザー"""
+    participants_list = serializers.SerializerMethodField()
+    game_name = serializers.CharField(source='game.name', read_only=True)
+
+    class Meta:
+        model = DiscordRecruitment
+        fields = [
+            'id',
+            'game',
+            'game_name',
+            'discord_message_id',
+            'discord_channel_id',
+            'discord_server_id',
+            'discord_owner_id',
+            'discord_owner_username',
+            'title',
+            'description',
+            'max_slots',
+            'current_slots',
+            'participants',
+            'participants_list',
+            'status',
+            'is_full',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'is_full', 'created_at', 'updated_at']
+    
+    def get_participants_list(self, obj):
+        """participantsフィールド（JSON文字列）をリストに変換"""
+        import json
+        try:
+            return json.loads(obj.participants)
+        except:
+            return []

@@ -33,4 +33,17 @@ urlpatterns = [
     path('api/riot/account/', views.get_riot_account, name='get_riot_account'),
     path('api/riot/refresh/', views.refresh_riot_rank, name='refresh_riot_rank'),
     path('api/riot/unlink/', views.unlink_riot_account, name='unlink_riot_account'),
+    
+    # Discord Bot 募集API
+    path('api/discord/recruitments/', views.discord_get_recruitments, name='discord_get_recruitments'),
+    path('api/discord/recruitments/create/', views.discord_create_recruitment, name='discord_create_recruitment'),
+    path('api/discord/recruitments/<int:recruitment_id>/', views.discord_get_recruitment_detail, name='discord_get_recruitment_detail'),
+    path('api/discord/recruitments/<int:recruitment_id>/join/', views.discord_join_recruitment, name='discord_join_recruitment'),
+    path('api/discord/recruitments/<int:recruitment_id>/leave/', views.discord_leave_recruitment, name='discord_leave_recruitment'),
+    path('api/discord/recruitments/<int:recruitment_id>/update/', views.discord_update_recruitment, name='discord_update_recruitment'),
+    path('api/discord/recruitments/<int:recruitment_id>/delete/', views.discord_delete_recruitment, name='discord_delete_recruitment'),
+    
+    # Discord サーバー設定API
+    path('api/discord/server/<str:server_id>/setting/', views.discord_get_server_setting, name='discord_get_server_setting'),
+    path('api/discord/server/setting/', views.discord_set_server_setting, name='discord_set_server_setting'),
 ]

@@ -1,4 +1,5 @@
 # accounts/models.py
+import json
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
@@ -319,3 +320,125 @@ class LoLRank(models.Model):
         if self.tier in ['MASTER', 'GRANDMASTER', 'CHALLENGER']:
             return f"{self.tier.capitalize()} {self.league_points}"
         return f"{self.tier.capitalize()} {self.rank}"
+
+class DiscordRecruitment(models.Model):
+    
+    STATUS_CHOICES = [
+        ('open', '募集中'),
+        ('closed', '締め切り'),
+        ('cancelled', 'キャンセル')
+    ]
+
+    game = models.ForeignKey(Game, on_delete=models.CASCADE,)
+
+    discord_message_id = models.CharField(max_length=30, blank=True, help_text='DiscordメッセージID')
+    discord_channel_id = models.CharField(max_length=30, help_text='DiscordチャンネルID')
+    discord_server_id = models.CharField(max_length=30, help_text='DiscordサーバーID')
+
+    discord_owner_id = models.CharField(max_length=30, help_text='募集者のID')
+    discord_owner_username = models.CharField(max_length=30, help_text='募集者の名前')
+
+    title = models.CharField(max_length=100, help_text='募集タイトル')
+    description = models.TextField(max_length=500, blank=True, help_text='詳細説明')
+
+    max_slots = models.PositiveIntegerField(default=4, help_text='最大募集人数（自分含む）')
+    current_slots = models.PositiveIntegerField(default=0, help_text='現在の参加者数')
+    
+    # 参加者リスト（JSON形式）
+    participants = models.TextField(default='[]', help_text='参加者リスト')
+    
+    # ステータス
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    
+    # タイムスタンプ
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Discord募集'
+        verbose_name_plural = 'Discord募集'
+    
+    def __str__(self):
+        return f"{self.title} ({self.current_slots}/{self.max_slots})"
+    
+    @property
+    def is_full(self):
+        return self.current_slots >= self.max_slots
+    
+    def add_participant(self, discord_user_id, discord_username):
+        """参加者を追加"""
+        # JSON文字列をリストに変換
+        participants_list = json.loads(self.participants)
+        
+        # 既に参加しているかチェック
+        if any(p['discord_user_id'] == discord_user_id for p in participants_list):
+            return False, "既に参加しています"
+        
+        # 定員チェック
+        if self.is_full:
+            return False, "募集は満員です"
+        
+        # 参加者を追加
+        participants_list.append({
+            'discord_user_id': discord_user_id,
+            'discord_username': discord_username
+        })
+        self.current_slots += 1
+        
+        # リストをJSON文字列に変換して保存
+        self.participants = json.dumps(participants_list, ensure_ascii=False)
+        
+        # 満員になったら募集終了
+        if self.is_full:
+            self.status = 'closed'
+        
+        self.save()
+        return True, "参加しました"
+    
+    def remove_participant(self, discord_user_id):
+        """参加者を削除"""
+        # JSON文字列をリストに変換
+        participants_list = json.loads(self.participants)
+        
+        # 参加者リストから削除
+        original_count = len(participants_list)
+        participants_list = [
+            p for p in participants_list 
+            if p['discord_user_id'] != discord_user_id
+        ]
+        
+        # 削除されたかチェック
+        if len(participants_list) == original_count:
+            return False, "参加していません"
+        
+        self.current_slots -= 1
+        
+        # リストをJSON文字列に変換して保存
+        self.participants = json.dumps(participants_list, ensure_ascii=False)
+        
+        # 満員が解除されたら募集再開
+        if self.status == 'closed' and not self.is_full:
+            self.status = 'open'
+        
+        self.save()
+        return True, "退出しました"
+
+
+class DiscordServerSetting(models.Model):
+    """Discordサーバーごとの設定"""
+    
+    discord_server_id = models.CharField(max_length=30, unique=True, help_text='DiscordサーバーID')
+    discord_server_name = models.CharField(max_length=100, blank=True, help_text='サーバー名')
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, help_text='このサーバーのゲーム')
+    default_max_slots = models.PositiveIntegerField(default=3, help_text='デフォルト募集人数')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Discordサーバー設定'
+        verbose_name_plural = 'Discordサーバー設定'
+    
+    def __str__(self):
+        return f"{self.discord_server_name} - {self.game.name}"

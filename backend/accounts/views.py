@@ -7,7 +7,7 @@ from django.contrib.auth import login
 import json
 
 
-from .models import Account, Profile, Game, Recruitment, Participant, GameRank, RiotAccount, LoLRank
+from .models import Account, Profile, Game, Recruitment, Participant, GameRank, RiotAccount, LoLRank, DiscordRecruitment, DiscordServerSetting
 
 # Discord OAuth2 設定
 DISCORD_CLIENT_ID = settings.DISCORD_CLIENT_ID
@@ -584,8 +584,340 @@ def discord_callback(request):
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
-# Riot API
+@csrf_exempt
+def discord_create_recruitment(request):
 
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        required_fields = ['game', 'discord_channel_id', 'discord_server_id', 
+                          'discord_owner_id', 'discord_owner_username', 'title']
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({'error': f'{field}は必須です'}, status=400)
+
+        try:
+            game = Game.objects.get(id=data['game'], is_active=True)
+        except Game.DoesNotExist:
+            return JsonResponse({'error': 'ゲームが見つかりません'}, status=400)
+            
+        recruitment = DiscordRecruitment.objects.create(
+            game = game,
+            discord_channel_id = data['discord_channel_id'],
+            discord_server_id=data['discord_server_id'],
+            discord_owner_id=data['discord_owner_id'],
+            discord_owner_username=data['discord_owner_username'],
+            title=data['title'],
+            description=data['description'],
+            max_slots=data.get('max_slots', 4),
+            current_slots=1,  # 募集者（自分）を含む
+        )
+        from .serializers import DiscordRecruitmentSerializer
+        serializer = DiscordRecruitmentSerializer(recruitment)
+
+        # WebSocket通知を送信
+        try:
+            from .consumers import sync_notify_recruitment_update
+            sync_notify_recruitment_update(serializer.data, 'recruitment_created')
+        except Exception as ws_error:
+            print(f"WebSocket通知エラー: {ws_error}")
+
+        return JsonResponse({
+            'success': True,
+            'recruitment': serializer.data,
+        }, status=201)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '無効なJSON形式です'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Discord create recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '募集の作成に失敗しました'}, status=500)
+        
+def discord_get_recruitments(request):
+    try:
+        from .serializers import DiscordRecruitmentSerializer
+
+        recrutiments = DiscordRecruitment.objects.filter(status='open').select_related('game').order_by('-created_at')
+
+        server_id = request.GET.get('server_id')
+        if server_id:
+            recrutiments = recrutiments.filter(discord_server_id=server_id)
+        
+        recruitments = recrutiments[:100]
+        serializer = DiscordRecruitmentSerializer(recruitments, many=True)
+
+        return JsonResponse({
+            'recruitments': serializer.data
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Discord get recruitments error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '募集の取得に失敗しました'}, status=500)
+
+def discord_get_recruitment_detail(request, recruitment_id):
+
+    try:
+        from .serializers import DiscordRecruitmentSerializer
+
+        recruitment = DiscordRecruitment.objects.select_related('game').get(id=recruitment_id)
+        serializer = DiscordRecruitmentSerializer(recruitment)
+
+        return JsonResponse({
+            'recruitment': serializer.data
+        })
+    except DiscordRecruitment.DoesNotExist:
+        return JsonResponse({'error': '募集が見つかりません'}, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Discord get recruitment detail error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '募集の詳細の取得に失敗しました'}, status=500)
+
+@csrf_exempt
+def discord_join_recruitment(request,recruitment_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+
+        discord_user_id = data.get('discord_user_id')
+        discord_username = data.get('discord_username')
+
+        if not discord_user_id or not discord_username:
+            return JsonResponse({'error': 'discord_user_idとdiscord_usernameは必須です'}, status=400)
+
+        recruitment = DiscordRecruitment.objects.select_related('game').get(id=recruitment_id)
+
+        if recruitment.discord_owner_id == discord_user_id:
+            return JsonResponse({'error': '募集者は参加できません'}, status=400)
+        
+        success, message = recruitment.add_participant(discord_user_id, discord_username)
+
+        if not success:
+            return JsonResponse({'error': message}, status=400)
+
+        from .serializers import DiscordRecruitmentSerializer
+        serializer = DiscordRecruitmentSerializer(recruitment)
+
+        # WebSocket通知を送信
+        try:
+            from .consumers import sync_notify_recruitment_update
+            sync_notify_recruitment_update(serializer.data, 'recruitment_update')
+        except Exception as ws_error:
+            print(f"WebSocket通知エラー: {ws_error}")
+
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'recruitment': serializer.data,
+        })
+    except DiscordRecruitment.DoesNotExist:
+        return JsonResponse({'error': '募集が見つかりません'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '無効なJSON形式です'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Discord join recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '参加処理に失敗しました'}, status=500)
+
+@csrf_exempt
+def discord_leave_recruitment(request, recruitment_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+
+        discord_user_id = data.get('discord_user_id')
+        if not discord_user_id:
+            return JsonResponse({'error': 'discord_user_idは必須です'}, status=400)
+        
+        recruitment = DiscordRecruitment.objects.select_related('game').get(id=recruitment_id)
+
+        success, message = recruitment.remove_participant(discord_user_id)
+        if not success:
+            return JsonResponse({'error': message}, status=400)
+        from .serializers import DiscordRecruitmentSerializer
+        serializer = DiscordRecruitmentSerializer(recruitment)
+
+        # WebSocket通知を送信
+        try:
+            from .consumers import sync_notify_recruitment_update
+            sync_notify_recruitment_update(serializer.data, 'recruitment_update')
+        except Exception as ws_error:
+            print(f"WebSocket通知エラー: {ws_error}")
+
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'recruitment': serializer.data,
+        })
+    except DiscordRecruitment.DoesNotExist:
+        return JsonResponse({'error': '募集が見つかりません'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '無効なJSON形式です'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Discord leave recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '離脱処理に失敗しました'}, status=500)
+
+@csrf_exempt
+def discord_update_recruitment(request, recruitment_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+
+        recruitment = DiscordRecruitment.objects.select_related('game').get(id=recruitment_id)
+
+        if 'discord_message_id' in data:
+            recruitment.discord_message_id = data['discord_message_id']
+        if 'status' in data:
+            recruitment.status = data['status']
+        if 'title' in data:
+            recruitment.title = data['title']
+        if 'description' in data:
+            recruitment.description = data['description']
+
+        recruitment.save()
+
+        from .serializers import DiscordRecruitmentSerializer
+        serializer = DiscordRecruitmentSerializer(recruitment)
+
+        return JsonResponse({
+            'success': True,
+            'message': '募集情報を更新しました',
+            'recruitment': serializer.data,
+        })
+
+    except DiscordRecruitment.DoesNotExist:
+        return JsonResponse({'error': '募集が見つかりません'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '無効なJSON形式です'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Discord update recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '募集情報の更新に失敗しました'}, status=500)
+
+@csrf_exempt
+def discord_delete_recruitment(request, recruitment_id):
+    if request.method != 'DELETE':
+        return JsonResponse({'error': 'DELETE method required'}, status=405)
+    
+    try:
+        recruitment = DiscordRecruitment.objects.select_related('game').get(id=recruitment_id)
+        deleted_id = recruitment.id
+        recruitment.delete()
+
+        # WebSocket通知を送信
+        try:
+            from .consumers import sync_notify_recruitment_update
+            sync_notify_recruitment_update({'id': deleted_id}, 'recruitment_deleted')
+        except Exception as ws_error:
+            print(f"WebSocket通知エラー: {ws_error}")
+
+        return JsonResponse({
+            'success': True,
+            'message': '募集を削除しました',
+        })
+
+    except DiscordRecruitment.DoesNotExist:
+        return JsonResponse({'error': '募集が見つかりません'}, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Discord delete recruitment error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': '募集の削除に失敗しました'}, status=500)
+
+
+# ============================================
+# Discord サーバー設定API
+# ============================================
+
+def discord_get_server_setting(request, server_id):
+    """サーバー設定を取得"""
+    try:
+        setting = DiscordServerSetting.objects.select_related('game').get(discord_server_id=server_id)
+        return JsonResponse({
+            'exists': True,
+            'setting': {
+                'discord_server_id': setting.discord_server_id,
+                'discord_server_name': setting.discord_server_name,
+                'game_id': setting.game.id,
+                'game_name': setting.game.name,
+                'default_max_slots': setting.default_max_slots,
+            }
+        })
+    except DiscordServerSetting.DoesNotExist:
+        return JsonResponse({'exists': False})
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Get server setting error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'サーバー設定の取得に失敗しました'}, status=500)
+
+
+@csrf_exempt
+def discord_set_server_setting(request):
+    """サーバー設定を作成/更新"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        server_id = data.get('discord_server_id')
+        server_name = data.get('discord_server_name', '')
+        game_id = data.get('game_id')
+        
+        if not server_id or not game_id:
+            return JsonResponse({'error': 'discord_server_id と game_id は必須です'}, status=400)
+        
+        try:
+            game = Game.objects.get(id=game_id, is_active=True)
+        except Game.DoesNotExist:
+            return JsonResponse({'error': 'ゲームが見つかりません'}, status=400)
+        
+        setting, created = DiscordServerSetting.objects.update_or_create(
+            discord_server_id=server_id,
+            defaults={
+                'discord_server_name': server_name,
+                'game': game,
+                'default_max_slots': data.get('default_max_slots', 3),
+            }
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'created': created,
+            'setting': {
+                'discord_server_id': setting.discord_server_id,
+                'discord_server_name': setting.discord_server_name,
+                'game_id': setting.game.id,
+                'game_name': setting.game.name,
+                'default_max_slots': setting.default_max_slots,
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '無効なJSON形式です'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Set server setting error: {str(e)}", exc_info=True)
+        return JsonResponse({'error': 'サーバー設定の保存に失敗しました'}, status=500)
+
+
+# Riot API
 RIOT_API_KEY = settings.RIOT_API_KEY
 
 RIOT_REGIONAL_ENDPOINTS = {
@@ -814,3 +1146,4 @@ def unlink_riot_account(request):
         return JsonResponse({'success': True})
     except RiotAccount.DoesNotExist:
         return JsonResponse({'error': '連携されていません'}, status=400)
+
