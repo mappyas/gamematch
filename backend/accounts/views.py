@@ -5,9 +5,13 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
 import json
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import VoiceChannelParticipationSerializer, UserRatingSerializer
+from django.utils import timezone
 
-
-from .models import Account, Profile, Game, Recruitment, Participant, GameRank, RiotAccount, LoLRank, DiscordRecruitment, DiscordServerSetting
+from .models import Account, Profile, Game, Recruitment, Participant, GameRank, RiotAccount, LoLRank, DiscordRecruitment, DiscordServerSetting,VoiceChannelParticipation, UserRating, DiscordRecruitment
 
 # Discord OAuth2 設定
 DISCORD_CLIENT_ID = settings.DISCORD_CLIENT_ID
@@ -610,7 +614,7 @@ def discord_create_recruitment(request):
             discord_owner_id=data['discord_owner_id'],
             discord_owner_username=data['discord_owner_username'],
             title=data['title'],
-            description=data['description'],
+            rank=data.get('rank', ''),
             max_slots=data.get('max_slots', 4),
             current_slots=1,  # 募集者（自分）を含む
         )
@@ -784,8 +788,8 @@ def discord_update_recruitment(request, recruitment_id):
             recruitment.status = data['status']
         if 'title' in data:
             recruitment.title = data['title']
-        if 'description' in data:
-            recruitment.description = data['description']
+        if 'rank' in data:
+            recruitment.rank = data['rank']
 
         recruitment.save()
 
@@ -1147,3 +1151,84 @@ def unlink_riot_account(request):
     except RiotAccount.DoesNotExist:
         return JsonResponse({'error': '連携されていません'}, status=400)
 
+@api_view(['POST'])
+def record_vc_join(request):
+    """VC参加記録API"""
+    serializer = VoiceChannelParticipationSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def record_vc_leave(request, participation_id):
+    """VC退出記録API"""
+    try:
+        participation = VoiceChannelParticipation.objects.get(id=participation_id)
+        participation.left_at = timezone.now()
+        
+        # 滞在時間を計算（秒）
+        if participation.joined_at and participation.left_at:
+            duration = participation.left_at - participation.joined_at
+            participation.duration_seconds = int(duration.total_seconds())
+        
+        participation.save()
+        
+        serializer = VoiceChannelParticipationSerializer(participation)
+        return Response({
+            'participation': serializer.data,
+            'is_eligible_for_rating': participation.is_eligible_for_rating()
+        })
+    except VoiceChannelParticipation.DoesNotExist:
+        return Response({'error': '参加記録が見つかりません'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+def submit_rating(request):
+    """ユーザー評価送信API"""
+    serializer = UserRatingSerializer(data=request.data)
+    if serializer.is_valid():
+        # 既存の評価をチェック
+        existing_rating = UserRating.objects.filter(
+            recruitment_id=request.data.get('recruitment'),
+            rater_discord_id=request.data.get('rater_discord_id'),
+            rated_discord_id=request.data.get('rated_discord_id')
+        ).first()
+        
+        if existing_rating:
+            # 既存の評価を更新
+            for key, value in serializer.validated_data.items():
+                setattr(existing_rating, key, value)
+            existing_rating.save()
+            return Response(UserRatingSerializer(existing_rating).data)
+        else:
+            # 新規評価を作成
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def get_vc_participants(request, recruitment_id):
+    """募集のVC参加者一覧取得API"""
+    try:
+        recruitment = DiscordRecruitment.objects.get(id=recruitment_id)
+        participants = VoiceChannelParticipation.objects.filter(recruitment=recruitment)
+        serializer = VoiceChannelParticipationSerializer(participants, many=True)
+        return Response(serializer.data)
+    except DiscordRecruitment.DoesNotExist:
+        return Response({'error': '募集が見つかりません'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+def get_user_ratings(request, recruitment_id):
+    """募集の評価一覧取得API"""
+    try:
+        recruitment = DiscordRecruitment.objects.get(id=recruitment_id)
+        ratings = UserRating.objects.filter(recruitment=recruitment)
+        serializer = UserRatingSerializer(ratings, many=True)
+        return Response(serializer.data)
+    except DiscordRecruitment.DoesNotExist:
+        return Response({'error': '募集が見つかりません'}, status=status.HTTP_404_NOT_FOUND)

@@ -46,4 +46,11 @@ urlpatterns = [
     # Discord サーバー設定API
     path('api/discord/server/<str:server_id>/setting/', views.discord_get_server_setting, name='discord_get_server_setting'),
     path('api/discord/server/setting/', views.discord_set_server_setting, name='discord_set_server_setting'),
+
+    # Phase 3: VC参加記録と評価API
+    path('api/discord/vc/join/', views.record_vc_join, name='record_vc_join'),
+    path('api/discord/vc/leave/<int:participation_id>/', views.record_vc_leave, name='record_vc_leave'),
+    path('api/discord/ratings/submit/', views.submit_rating, name='submit_rating'),
+    path('api/discord/recruitments/<int:recruitment_id>/vc-participants/', views.get_vc_participants, name='get_vc_participants'),
+    path('api/discord/recruitments/<int:recruitment_id>/ratings/', views.get_user_ratings, name='get_user_ratings'),
 ]

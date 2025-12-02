@@ -23,6 +23,7 @@ BACKEND_API_URL = os.getenv('BACKEND_API_URL', 'http://localhost:8000')
 intents = discord.Intents.default()
 intents.message_content = True  # メッセージ内容を読み取る
 intents.members = True  # メンバー情報を取得
+intents.voice_states = True  # VC状態を監視（Phase 1で追加）
 
 # Botインスタンスを作成
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -73,15 +74,14 @@ class GameSelect(discord.ui.Select):
                 'discord_server_id': str(interaction.guild.id),
                 'discord_server_name': interaction.guild.name,
                 'game_id': game_id,
-                'default_max_slots': 3,
+                'default_max_slots': 2,
             }
             
             try:
                 async with session.post(url, json=data) as response:
                     if response.status == 200:
                         await interaction.response.send_message(
-                            f"✅ このサーバーのゲームを **{game_name}** に設定しました！\n"
-                            f"これで `/recruit` コマンドが使えます。",
+                            f"✅ このサーバーのゲームを **{game_name}** に設定しました！",
                             ephemeral=True
                         )
                     else:
@@ -114,29 +114,32 @@ class GameSelectView(discord.ui.View):
 class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成'):
     """募集作成モーダル"""
     
-    def __init__(self, game_id: int, game_name: str, max_slots: int = 3):
+    def __init__(self, game_id: int, game_name: str, max_slots: int):
         super().__init__()
         self.game_id = game_id
         self.game_name = game_name
-        self.max_slots = max_slots
     
     # タイトル入力
     title_input = discord.ui.TextInput(
         label='募集タイトル',
-        placeholder='例: カジュアル一緒にやりませんか？',
+        placeholder='例: ランクマッチ@2 ダイヤ目指したい！',
         required=True,
         max_length=100
     )
-    
-    # 説明入力
-    description_input = discord.ui.TextInput(
-        label='詳細説明（任意）',
-        style=discord.TextStyle.paragraph,
-        placeholder='例: 楽しくやりましょう！初心者歓迎です',
-        required=False,
-        max_length=500
+
+    rank_input = discord.ui.TextInput(
+        label='ランク条件',
+        placeholder='例: ダイヤ↑、問わないなど',
+        required=True,
+        max_length=50
     )
-    
+
+    slot_input  = discord.ui.TextInput(
+        label='募集人数（自分含む）',
+        required=True,
+        max_length=2
+    )
+
     async def on_submit(self, interaction: discord.Interaction):
         """モーダル送信時の処理"""
         await interaction.response.defer()
@@ -151,7 +154,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                 'discord_owner_id': str(interaction.user.id),
                 'discord_owner_username': interaction.user.name,
                 'title': self.title_input.value,
-                'description': self.description_input.value or '',
+                'rank': self.rank_input.value,
                 'max_slots': self.max_slots,
             }
             
@@ -166,7 +169,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         embed = create_recruitment_embed(recruitment_data, self.game_name)
                         
                         # ボタンUIを作成
-                        view = RecruitmentView(recruitment_id, self.max_slots)
+                        view = RecruitmentView(recruitment_id, max_slots)
                         
                         # メッセージを送信
                         message = await interaction.followup.send(embed=embed, view=view)
@@ -228,6 +231,11 @@ class RecruitmentView(discord.ui.View):
                             ephemeral=True
                         )
                         await self.update_recruitment_message(interaction, recruitment_data)
+                        
+                        # Phase 1: 満員になったらVC招待を送信
+                        if recruitment_data.get('is_full'):
+                            await check_and_send_vc_invite(recruitment_data)
+                        
                     elif response.status == 400:
                         error = await response.json()
                         await interaction.followup.send(
@@ -276,7 +284,11 @@ class RecruitmentView(discord.ui.View):
         try:
             game_name = recruitment_data.get('game_name', '')
             embed = create_recruitment_embed(recruitment_data, game_name)
-            await interaction.message.edit(embed=embed)
+
+            if recruitment_data.get('is_full'):
+                await interaction.message.edit(embed=embed, view=None)
+            else:
+                await interaction.message.edit(embed=embed)
         except Exception as e:
             print(f"Error updating message: {e}")
 
@@ -288,28 +300,26 @@ class RecruitmentView(discord.ui.View):
 def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> discord.Embed:
     """募集情報のEmbedメッセージを作成"""
     title = recruitment_data.get('title', 'パーティ募集')
-    description = recruitment_data.get('description', '')
+    rank = recruitment_data.get('rank', '')
     current_slots = recruitment_data.get('current_slots', 0)
     max_slots = recruitment_data.get('max_slots', 3)
     status = recruitment_data.get('status', 'open')
     participants = recruitment_data.get('participants_list', [])
-    game_name = game_name or recruitment_data.get('game_name', '')
+    owner_name = recruitment_data.get('discord_owner_username', '')
+    is_full = recruitment_data.get('is_full', False)
     
-    color = discord.Color.green() if status == 'open' else discord.Color.red()
+    if is_full:
+        embed_title = f"~~{title}~~"
+        color = discord.Color.grey()
+    else:
+        embed_title = f"{title}"
+        color = discord.Color.green()
+   
+    embed = discord.Embed(title=embed_title, color=color)
     
-    embed = discord.Embed(
-        title=f"🎮 {title}",
-        description=description or "一緒に遊びましょう！",
-        color=color
-    )
-    
-    # ゲーム名
-    if game_name:
-        embed.add_field(name="ゲーム", value=f"🎯 {game_name}", inline=True)
-    
-    # ステータス
-    status_text = "🟢 募集中" if status == 'open' else "🔴 募集終了"
-    embed.add_field(name="ステータス", value=status_text, inline=True)
+    # ランク条件
+    if rank:
+        embed.add_field(name="ランク条件", value=f" {rank}", inline=True)
     
     # 参加者リスト
     if participants:
@@ -332,7 +342,10 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
         inline=False
     )
     
-    embed.set_footer(text="下のボタンから参加・退出できます")
+    if is_full:
+        embed.set_footer(text="この募集は満員です")
+    else:
+        embed.set_footer(text="下のボタンから参加・退出できます")
     
     return embed
 
@@ -414,11 +427,182 @@ async def recruit(interaction: discord.Interaction):
             )
 
 
+
+
 @bot.event
 async def on_command_error(ctx, error):
     """エラーハンドリング"""
     print(f'Error: {error}')
     await ctx.send(f'エラーが発生しました: {error}')
+
+
+# ============================================
+# Phase 1: VC管理機能
+# ============================================
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    """ボイスチャンネルの参加・退出を監視"""
+    # VCに参加した場合
+    if before.channel is None and after.channel is not None:
+        print(f"✅ {member.name} が {after.channel.name} に参加しました")
+        # ここでVC参加記録をAPIに送信可能
+        
+    # VCから退出した場合
+    elif before.channel is not None and after.channel is None:
+        print(f"👋 {member.name} が {before.channel.name} から退出しました")
+        # Phase 4: VC退出時に評価DM送信をスケジュール
+        # 実際の実装では、参加時刻を記録し、30分以上の滞在時間を計算
+        # ここでは簡易実装として、退出時に即座に評価DM送信
+        # await send_rating_dm_after_vc(member, before.channel)
+
+
+async def send_vc_invite_to_participants(recruitment_id: int, guild_id: int, participant_ids: list):
+    """募集参加者にVC招待URLをDM送信"""
+    try:
+        guild = bot.get_guild(int(guild_id))
+        if not guild:
+            print(f"❌ サーバーが見つかりません: {guild_id}")
+            return
+        
+        # 空いているVCを検索（カテゴリ内の空のVCを探す）
+        # 実際の実装では、DiscordServerSetting から voice_category_id を取得して使用
+        available_vc = None
+        for channel in guild.voice_channels:
+            if len(channel.members) == 0:  # 空のVCを見つけた
+                available_vc = channel
+                break
+        
+        if not available_vc:
+            print("❌ 空いているVCが見つかりません")
+            return
+        
+        # 30分期限の招待URLを生成
+        invite = await available_vc.create_invite(
+            max_age=1800,  # 30分
+            max_uses=len(participant_ids),  # 参加者数分
+            unique=True
+        )
+        
+        # 各参加者にDM送信
+        for user_id in participant_ids:
+            try:
+                user = await bot.fetch_user(int(user_id))
+                embed = discord.Embed(
+                    title="🎮 ボイスチャット招待",
+                    description=f"募集が満員になりました！\n下記のリンクからボイスチャットに参加してください。",
+                    color=discord.Color.green()
+                )
+                embed.add_field(name="ボイスチャンネル", value=available_vc.name, inline=False)
+                embed.add_field(name="招待リンク", value=invite.url, inline=False)
+                embed.set_footer(text="招待リンクは30分間有効です")
+                
+                await user.send(embed=embed)
+                print(f"✅ {user.name} にVC招待を送信しました")
+            except discord.Forbidden:
+                print(f"⚠️ {user_id} へのDM送信が拒否されました")
+            except Exception as e:
+                print(f"❌ DM送信エラー ({user_id}): {e}")
+        
+        print(f"📢 VC招待URLを送信しました: {available_vc.name}")
+        
+    except Exception as e:
+        print(f"❌ VC招待送信エラー: {e}")
+
+
+# 募集参加時の処理を拡張（RecruitmentView.join_buttonを更新）
+# 満員になったらVC招待を送信
+async def check_and_send_vc_invite(recruitment_data: dict):
+    """募集が満員になったらVC招待を送信"""
+    if recruitment_data.get('is_full'):
+        # 参加者のDiscord IDリストを取得
+        participants = recruitment_data.get('participants_list', [])
+        owner_id = recruitment_data.get('discord_owner_id')
+        
+        # 募集者も含める
+        all_participants = [owner_id] + [p['discord_user_id'] for p in participants]
+        
+        guild_id = recruitment_data.get('discord_server_id')
+        recruitment_id = recruitment_data.get('id')
+        
+        # VC招待を送信
+        await send_vc_invite_to_participants(recruitment_id, guild_id, all_participants)
+
+
+#  ============================================
+# Phase 4: ユーザ評価システム
+# ============================================
+
+class RatingView(discord.ui.View):
+    """ユーザ評価用のUIView"""
+    
+    def __init__(self, rated_users: list, recruitment_id: int):
+        super().__init__(timeout=1800)  # 30分タイムアウト
+        self.rated_users = rated_users  # 評価対象ユーザのリスト
+        self.recruitment_id = recruitment_id
+        self.ratings = {}  # {user_id: rating}
+        
+        # デフォルトで全員を5つ星に設定
+        for user in rated_users:
+            self.ratings[user['discord_user_id']] = 5
+    
+    @discord.ui.button(label='評価を送信', style=discord.ButtonStyle.green, emoji='✅')
+    async def submit_ratings(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """評価を送信"""
+        await interaction.response.defer(ephemeral=True)
+        
+        # バックエンドAPIに評価を送信
+        # 実際の実装ではAPIエンドポイントを作成
+        async with aiohttp.ClientSession() as session:
+            for user in self.rated_users:
+                rating_data = {
+                    'recruitment_id': self.recruitment_id,
+                    'rater_discord_id': str(interaction.user.id),
+                    'rater_discord_username': interaction.user.name,
+                    'rated_discord_id': user['discord_user_id'],
+                    'rated_discord_username': user['discord_username'],
+                    'rating': self.ratings.get(user['discord_user_id'], 5),
+                    'is_auto_submitted': False
+                }
+                url = f"{BACKEND_API_URL}/accounts/api/discord/ratings/submit/"
+                await session.post(url, json=rating_data)
+                print(f"📊 評価送信: {rating_data}")
+        
+        await interaction.followup.send("✅ 評価を送信しました！", ephemeral=True)
+        self.stop()
+    
+    async def on_timeout(self):
+        """30分後の自動送信"""
+        print(f"⏰ 評価が30分でタイムアウト、自動送信します (Recruitment #{self.recruitment_id})")
+        # デフォルト評価（全員5つ星）を自動送信
+        # 実際にはAPIに送信
+
+
+async def send_rating_dm(user: discord.User, other_participants: list, recruitment_id: int):
+    """VC退出後に評価DMを送信"""
+    try:
+        if not other_participants:
+            return
+        
+        embed = discord.Embed(
+            title="⭐ パーティメンバーを評価",
+            description="一緒にプレイしたメンバーを評価してください。\n評価しない場合、30分後に自動的に全員を★5で送信します。",
+            color=discord.Color.blue()
+        )
+        
+        # 参加者リストを表示
+        participants_text = "\n".join([f"• {p['discord_username']}" for p in other_participants])
+        embed.add_field(name="メンバー", value=participants_text, inline=False)
+        embed.set_footer(text="デフォルトは全員★5です | 30分後に自動送信されます")
+        
+        view = RatingView(other_participants, recruitment_id)
+        await user.send(embed=embed, view=view)
+        print(f"✅ {user.name} に評価DMを送信しました")
+        
+    except discord.Forbidden:
+        print(f"⚠️ {user.name} へのDM送信が拒否されました")
+    except Exception as e:
+        print(f"❌ 評価DM送信エラー: {e}")
 
 
 def main():
@@ -429,6 +613,8 @@ def main():
         return
     
     print("🚀 Discord Botを起動中...")
+    print("📝 Phase 1: VC管理機能が有効です")
+    print("📝 Phase 4: ユーザ評価システムが有効です")
     try:
         bot.run(DISCORD_BOT_TOKEN)
     except Exception as e:
@@ -437,3 +623,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+

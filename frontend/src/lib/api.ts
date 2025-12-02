@@ -23,7 +23,19 @@ export const API_ENDPOINTS = {
   riotAccount: `${API_URL}/accounts/api/riot/account/`,
   riotRefresh: `${API_URL}/accounts/api/riot/refresh/`,
   riotUnlink: `${API_URL}/accounts/api/riot/unlink/`,
+  
+  // Discord Bot 募集API
+  discordRecruitments: `${API_URL}/accounts/api/discord/recruitments/`,
+  discordCreateRecruitment: `${API_URL}/accounts/api/discord/recruitments/create/`,
 } as const;
+
+// WebSocket URL
+export const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+
+// Discord募集用の動的URL
+export const getDiscordRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/discord/recruitments/${id}/`;
+export const joinDiscordRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/discord/recruitments/${id}/join/`;
+export const leaveDiscordRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/discord/recruitments/${id}/leave/`;
 
 // 募集詳細・参加などの動的URL
 export const getRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/`;

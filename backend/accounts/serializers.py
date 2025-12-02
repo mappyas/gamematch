@@ -6,7 +6,8 @@
 from typing import Optional, Dict, Any, List
 from .models import (
     Account, Profile, Game, GameAccount, Recruitment, 
-    Participant, RiotAccount, LoLRank, DiscordRecruitment
+    Participant, RiotAccount, LoLRank, DiscordRecruitment,
+    VoiceChannelParticipation, UserRating
 )
 from rest_framework import serializers
 
@@ -199,7 +200,7 @@ class DiscordRecruitmentSerializer(serializers.ModelSerializer):
             'discord_owner_id',
             'discord_owner_username',
             'title',
-            'description',
+            'rank',
             'max_slots',
             'current_slots',
             'participants',
@@ -218,3 +219,35 @@ class DiscordRecruitmentSerializer(serializers.ModelSerializer):
             return json.loads(obj.participants)
         except:
             return []
+
+class VoiceChannelParticipationSerializer(serializers.ModelSerializer):
+    """VC参加履歴シリアライザ"""
+    
+    class Meta:
+        model = VoiceChannelParticipation
+        fields = [
+            'id', 'recruitment', 'discord_user_id', 'discord_username',
+            'voice_channel_id', 'joined_at', 'left_at', 'duration_seconds'
+        ]
+        read_only_fields = ['id', 'joined_at']
+
+
+class UserRatingSerializer(serializers.ModelSerializer):
+    """ユーザー評価シリアライザ"""
+    
+    class Meta:
+        model = UserRating
+        fields = [
+            'id', 'recruitment', 'rater_discord_id', 'rater_discord_username',
+            'rated_discord_id', 'rated_discord_username', 'rating',
+            'comment', 'is_auto_submitted', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+    
+    def validate(self, attrs):
+        """評価の検証"""
+        # 自分自身を評価できないようにする
+        if attrs.get('rater_discord_id') == attrs.get('rated_discord_id'):
+            raise serializers.ValidationError("自分自身を評価することはできません")
+        
+        return attrs

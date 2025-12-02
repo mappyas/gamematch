@@ -150,6 +150,8 @@ class GameAccount(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     
+    is_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
     class Meta:
         # 同じゲームを2回登録できないようにする
         unique_together = ['profile', 'game']
@@ -339,7 +341,7 @@ class DiscordRecruitment(models.Model):
     discord_owner_username = models.CharField(max_length=30, help_text='募集者の名前')
 
     title = models.CharField(max_length=100, help_text='募集タイトル')
-    description = models.TextField(max_length=500, blank=True, help_text='詳細説明')
+    rank = models.CharField(max_length=50, blank=True, help_text='ランク条件')
 
     max_slots = models.PositiveIntegerField(default=4, help_text='最大募集人数（自分含む）')
     current_slots = models.PositiveIntegerField(default=0, help_text='現在の参加者数')
@@ -433,6 +435,8 @@ class DiscordServerSetting(models.Model):
     game = models.ForeignKey(Game, on_delete=models.CASCADE, help_text='このサーバーのゲーム')
     default_max_slots = models.PositiveIntegerField(default=3, help_text='デフォルト募集人数')
     
+    voice_category_id = models.CharField(max_length=30, blank=True)
+    available_voice_channels = models.TextField(default='[]')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -442,3 +446,33 @@ class DiscordServerSetting(models.Model):
     
     def __str__(self):
         return f"{self.discord_server_name} - {self.game.name}"
+
+class VoiceChannelParticipation(models.Model):
+    """ボイスチャンネル参加履歴"""
+    recruitment = models.ForeignKey(DiscordRecruitment, on_delete=models.CASCADE, related_name='vc_participations')
+    discord_user_id = models.CharField(max_length=30)
+    discord_username = models.CharField(max_length=100)
+    voice_channel_id = models.CharField(max_length=30)
+    
+    joined_at =  models.DateTimeField(auto_now_add=True)
+    left_at = models.DateTimeField(null=True, blank=True)
+    duration_seconds = models.IntegerField(default=0)
+    
+    def is_eligible_for_rating(self):
+        return self.duration_seconds >= 1800
+class UserRating(models.Model):
+    """ユーザ評価"""
+    recruitment = models.ForeignKey(DiscordRecruitment, on_delete=models.CASCADE, related_name='ratings')
+    rater_discord_id = models.CharField(max_length=30)
+    rater_discord_username = models.CharField(max_length=100)
+    rated_discord_id = models.CharField(max_length=30)
+    rated_discord_username = models.CharField(max_length=100)
+    
+    rating = models.IntegerField(default=5, choices=[(1,'⭐'),(2,'⭐⭐'),(3,'⭐⭐⭐'),(4,'⭐⭐⭐⭐'),(5,'⭐⭐⭐⭐⭐')])
+    comment = models.TextField(blank=True, max_length=500)
+    is_auto_submitted = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['recruitment', 'rater_discord_id', 'rated_discord_id']

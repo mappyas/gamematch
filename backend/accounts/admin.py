@@ -1,7 +1,11 @@
 # accounts/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Account, Profile, Game, GameAccount, Recruitment, Participant, GameRank, RiotAccount, LoLRank
+from .models import (
+    Account, Profile, Game, GameAccount, Recruitment, Participant, 
+    GameRank, RiotAccount, LoLRank,
+    VoiceChannelParticipation, UserRating
+)
 
 
 @admin.register(Account)
@@ -82,3 +86,24 @@ class RiotAccountAdmin(admin.ModelAdmin):
 @admin.register(LoLRank)
 class LoLRankAdmin(admin.ModelAdmin):
     list_display = ['riot_account', 'queue_type', 'tier', 'rank', 'league_points', 'wins', 'losses', 'updated_at']
+# Phase 2で追加したモデルの管理画面設定
+
+@admin.register(VoiceChannelParticipation)
+class VoiceChannelParticipationAdmin(admin.ModelAdmin):
+    list_display = ['discord_username', 'recruitment', 'voice_channel_id', 'duration_seconds', 'joined_at', 'left_at']
+    list_filter = ['joined_at']
+    search_fields = ['discord_username', 'discord_user_id']
+    ordering = ['-joined_at']
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # 編集時
+            return ['joined_at']
+        return []
+
+@admin.register(UserRating)
+class UserRatingAdmin(admin.ModelAdmin):
+    list_display = ['rater_discord_username', 'rated_discord_username', 'rating', 'recruitment', 'is_auto_submitted', 'created_at']
+    list_filter = ['rating', 'is_auto_submitted', 'created_at']
+    search_fields = ['rater_discord_username', 'rated_discord_username']
+    ordering = ['-created_at']
+    readonly_fields = ['created_at']
