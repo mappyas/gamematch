@@ -19,6 +19,7 @@ type Game = {
   name: string;
   icon: string;
   color: string;
+  bannerUrl: string;
 };
 
 type NavbarProps = {
