@@ -1,107 +1,26 @@
-// ゲーム型
+// Profile & User types
 export type Game = {
   id: number;
-  name: string;
   slug: string;
+  name: string;
   icon: string;
   color: string;
+  bannerUrl: string;
 };
 
-// 参加者型
-export type Participant = {
-  id: number;
-  discord_username: string;
-  avatar: string | null;
-};
-
-// 募集型
-export type Recruitment = {
-  id: number;
-  title: string;
-  description: string;
-  game: Game;
-  platform: string;
-  max_players: number;
-  current_players: number;
-  rank: string;
-  voice_chat: boolean;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  is_full: boolean;
-  owner?: {
-    id: number;
-    discord_username: string;
-    avatar: string | null;
-  };
-  participants?: Participant[];  // 参加者リスト追加
-  joined_at?: string;
-};
-
-// 検索型
-export type SearchFilters = {
-  searchQuery: string;
-  selectedGame: string | null;
-  selectedPlatform: string | null;
-};
-
-// LoLランク型
-export type LoLRank = {
-  queue_type: string;
-  queue_type_display: string;
-  tier: string;
-  rank: string;
-  league_points: number;
-  wins: number;
-  losses: number;
-  display_rank: string;
-};
-
-// Riotアカウント型
-export type RiotAccount = {
-  riot_id: string;
-  game_name: string;
-  tag_line: string;
-  region: string;
-  lol_ranks: LoLRank[];
-};
-
-// ゲームアカウント型
-export type GameAccount = {
-  id: number;
-  game: Game;
-  player_id: string;
-  rank: string;
-};
-
-// プロフィール型
-export type Profile = {
-  display_name: string;
-  main_game: Game | null;
-  platform: string;
-  bio: string;
-  created_at: string;
-  updated_at: string;
-  game_accounts: GameAccount[];
-};
-
-// ユーザー型
 export type User = {
   id: number;
   discord_id: string;
   discord_username: string;
-  avatar: string;
-  email: string | null;
-  is_profile_complete: boolean;
-  created_at: string;
+  avatar: string | null;
 };
 
-// プロフィールデータ型（APIレスポンス）
-export type ProfileData = {
-  user: User;
-  profile: Profile | null;
-  created_recruitments: Recruitment[];
-  participated_recruitments: Recruitment[];
-  riot_account: RiotAccount | null;
-};
-
+// ゲーム一覧
+export const GAMES: Game[] = [
+  { id: 1, slug: 'apex', name: 'Apex Legends', icon: '🎯', color: '#DA292A', bannerUrl: '' },
+  { id: 2, slug: 'valorant', name: 'VALORANT', icon: '🔫', color: '#FF4655', bannerUrl: '' },
+  { id: 3, slug: 'lol', name: 'League of Legends', icon: '⚔️', color: '#C89B3C', bannerUrl: '' },
+  { id: 4, slug: 'fortnite', name: 'Fortnite', icon: '🏗️', color: '#9D4DFF', bannerUrl: '' },
+  { id: 5, slug: 'overwatch', name: 'Overwatch 2', icon: '🦸', color: '#F99E1A', bannerUrl: '' },
+  { id: 6, slug: 'minecraft', name: 'Minecraft', icon: '⛏️', color: '#62B47A', bannerUrl: '' },
+];

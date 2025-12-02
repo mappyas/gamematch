@@ -1,22 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-
-type DiscordRecruitment = {
-  id: number;
-  game: number;
-  game_name: string;
-  title: string;
-  rank: string;
-  discord_owner_id: string;
-  discord_owner_username: string;
-  max_slots: number;
-  current_slots: number;
-  participants_list: { discord_user_id: string; discord_username: string }[];
-  status: string;
-  is_full: boolean;
-  created_at: string;
-};
+import { DiscordRecruitment } from '@/types/discord';
 
 type Props = {
   recruitment: DiscordRecruitment;
@@ -131,11 +116,10 @@ export function DiscordRecruitmentCard({
       {/* フッター */}
       <div className="flex items-center justify-between pt-3 border-t border-white/5">
         <span
-          className={`px-3 py-1 rounded-full text-xs font-bold ${
-            recruitment.status === 'open'
+          className={`px-3 py-1 rounded-full text-xs font-bold ${recruitment.status === 'open'
               ? 'bg-green-500/20 text-green-400'
               : 'bg-red-500/20 text-red-400'
-          }`}
+            }`}
         >
           {recruitment.status === 'open' ? '🟢 募集中' : '🔴 締切'}
         </span>

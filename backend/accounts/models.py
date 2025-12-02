@@ -3,7 +3,7 @@ import json
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
-
+# 管理者用
 class AccountManager(BaseUserManager):
     def create_user(self, discord_id, discord_username, password=None, **extra_fields):
         if not discord_id:
@@ -46,15 +46,14 @@ class Account(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(blank=True, null=True)  # Discordから取得（オプション）
     
     # Django用
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True) # 有効かどうか
+    is_staff = models.BooleanField(default=False) # 管理者かどうか
     
-    # プロフィール登録済みかどうか
-    is_profile_complete = models.BooleanField(default=False)
+    is_profile_complete = models.BooleanField(default=False) # プロフィール登録済みかどうか
     
     # タイムスタンプ
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True) # 作成日時
+    updated_at = models.DateTimeField(auto_now=True) # 更新日時
     
     objects = AccountManager()
     
@@ -68,23 +67,23 @@ class Account(AbstractBaseUser, PermissionsMixin):
 class Game(models.Model):
     """対応ゲーム一覧（管理画面から追加可能）"""
     
-    slug = models.CharField(max_length=50, unique=True, help_text='URL用の識別子（例: apex, valorant）')
-    name = models.CharField(max_length=100, help_text='ゲーム名')
-    icon = models.URLField(max_length=500, blank=True, help_text='ゲームアイコンURL')
-    color = models.CharField(max_length=7, default='#6366f1', help_text='テーマカラー（例: #DA292A）')
-    max_players = models.PositiveIntegerField(default=4, help_text='最大パーティ人数')
+    slug = models.CharField(max_length=50, unique=True, help_text='URL用の識別子（例: apex, valorant）') # URL用の識別子（例: apex, valorant）
+    name = models.CharField(max_length=100, help_text='ゲーム名') # ゲーム名
+    icon = models.URLField(max_length=500, blank=True, help_text='ゲームアイコンURL') # ゲームアイコンURL
+    color = models.CharField(max_length=7, default='#6366f1', help_text='テーマカラー（例: #DA292A）') # テーマカラー（例: #DA292A）
+    max_players = models.PositiveIntegerField(default=4, help_text='最大パーティ人数') # 最大パーティ人数
     platforms = models.CharField(
         max_length=100, 
         default='pc,ps,xbox,switch,mobile,crossplay',
         help_text='対応プラットフォーム（カンマ区切り: pc,ps,xbox,switch,mobile,crossplay）'
-    )
+    ) # 対応プラットフォーム（カンマ区切り: pc,ps,xbox,switch,mobile,crossplay）
 
-    is_active = models.BooleanField(default=True, help_text='サイトに表示するか')
+    is_active = models.BooleanField(default=True, help_text='サイトに表示するか') # サイトに表示するか  
     
     # 並び順
-    order = models.PositiveIntegerField(default=0, help_text='表示順（小さいほど上）')
+    order = models.PositiveIntegerField(default=0, help_text='表示順（小さいほど上）') # 表示順（小さいほど上）
     
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True) # 作成日時
     
     class Meta:
         ordering = ['order', 'name']
@@ -99,10 +98,10 @@ class Game(models.Model):
 
 class GameRank(models.Model):
     """ゲームごとのランク"""
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='ranks')
-    rankname = models.CharField(max_length=100, help_text='ランク名')
-    rankorder = models.PositiveIntegerField()
-    icon = models.URLField(max_length=500, blank=True, help_text='ランクアイコンURL')
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='ranks') # 対応ゲーム
+    rankname = models.CharField(max_length=100, help_text='ランク名') # ランク名
+    rankorder = models.PositiveIntegerField() # ランク順
+    icon = models.URLField(max_length=500, blank=True, help_text='ランクアイコンURL') # ランクアイコンURL
 
     class Meta:
         ordering = ['rankorder']
@@ -122,19 +121,18 @@ class Profile(models.Model):
         ('mobile', 'Mobile'),
     ]
     
-    account = models.OneToOneField(Account, on_delete=models.CASCADE, related_name='profile')
+    account = models.OneToOneField(Account, on_delete=models.CASCADE, related_name='profile') # 1対1関係
     
     # 基本情報
-    display_name = models.CharField(max_length=50, help_text='サイト上での表示名')
-    main_game = models.ForeignKey(Game, on_delete=models.SET_NULL, null=True, blank=True, help_text='メインでプレイするゲーム')
-    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES, default='pc')
+    display_name = models.CharField(max_length=50, help_text='サイト上での表示名') # サイト上での表示名
+    main_game = models.ForeignKey(Game, on_delete=models.SET_NULL, null=True, blank=True, help_text='メインでプレイするゲーム') # メインでプレイするゲーム
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES, default='pc') # プラットフォーム
     
-    # 自己紹介
-    bio = models.TextField(max_length=500, blank=True, help_text='自己紹介')
+    bio = models.TextField(max_length=500, blank=True, help_text='自己紹介') # 自己紹介
     
     # タイムスタンプ
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True) # 作成日時
+    updated_at = models.DateTimeField(auto_now=True) # 更新日時
     
     def __str__(self):
         return f"{self.display_name}のプロフィール"
@@ -143,15 +141,15 @@ class Profile(models.Model):
 class GameAccount(models.Model):
     """ゲームごとのID（複数登録可能）"""
     
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='game_accounts')
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='game_accounts')
-    player_id = models.CharField(max_length=100, help_text='ゲーム内のプレイヤーID')
-    rank = models.CharField(max_length=50, blank=True, help_text='ランク（任意）')
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='game_accounts') # 1対多関係
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='game_accounts') # 1対多関係
+    player_id = models.CharField(max_length=100, help_text='ゲーム内のプレイヤーID') # プレイヤーID
+    rank = models.CharField(max_length=50, blank=True, help_text='ランク（任意）') # ランク
     
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True) # 作成日時
     
-    is_verified = models.BooleanField(default=False)
-    verified_at = models.DateTimeField(null=True, blank=True)
+    is_verified = models.BooleanField(default=False) # 認証済みかどうか
+    verified_at = models.DateTimeField(null=True, blank=True) # 認証日時
     class Meta:
         # 同じゲームを2回登録できないようにする
         unique_together = ['profile', 'game']
@@ -179,25 +177,25 @@ class Recruitment(models.Model):
     ]
     
     # 募集者
-    owner = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='recruitments')
+    owner = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='recruitments') # 1対多関係
     
     # 募集内容
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='recruitments')
-    title = models.CharField(max_length=100, help_text='募集タイトル')
-    description = models.TextField(max_length=500, blank=True, help_text='詳細説明')
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='recruitments') # 対応ゲーム
+    title = models.CharField(max_length=100, help_text='募集タイトル') # 募集タイトル
+    description = models.TextField(max_length=500, blank=True, help_text='詳細説明') # 詳細説明
     
     # 条件
-    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES, default='pc')
-    max_players = models.PositiveIntegerField(default=4, help_text='募集人数（自分含む）')
-    rank = models.CharField(max_length=50, blank=True, help_text='ランク条件')
-    voice_chat = models.BooleanField(default=False, help_text='ボイスチャット必須か')
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES, default='pc') # プラットフォーム
+    max_players = models.PositiveIntegerField(default=4, help_text='募集人数（自分含む）') # 募集人数
+    rank = models.CharField(max_length=50, blank=True, help_text='ランク条件') # ランク条件
+    voice_chat = models.BooleanField(default=False, help_text='ボイスチャット必須か') # ボイスチャット必須か
     
     # ステータス
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open') # ステータス
     
     # タイムスタンプ
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True) # 作成日時
+    updated_at = models.DateTimeField(auto_now=True) # 更新日時
     
     class Meta:
         ordering = ['-created_at']
@@ -224,11 +222,11 @@ class Participant(models.Model):
         ('left', '離脱'),
     ]
     
-    recruitment = models.ForeignKey(Recruitment, on_delete=models.CASCADE, related_name='participants')
-    user = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='participations')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='joined')
+    recruitment = models.ForeignKey(Recruitment, on_delete=models.CASCADE, related_name='participants') # どの募集に参加しているか
+    user = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='participations') # どのユーザーが参加しているか
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='joined') # 参加状態
     
-    joined_at = models.DateTimeField(auto_now_add=True)
+    joined_at = models.DateTimeField(auto_now_add=True) # 参加日時
     
     class Meta:
         # 同じ募集に2回参加できないようにする
@@ -331,23 +329,23 @@ class DiscordRecruitment(models.Model):
         ('cancelled', 'キャンセル')
     ]
 
-    game = models.ForeignKey(Game, on_delete=models.CASCADE,)
+    game = models.ForeignKey(Game, on_delete=models.CASCADE,) # どのゲームを募集しているか
 
-    discord_message_id = models.CharField(max_length=30, blank=True, help_text='DiscordメッセージID')
-    discord_channel_id = models.CharField(max_length=30, help_text='DiscordチャンネルID')
-    discord_server_id = models.CharField(max_length=30, help_text='DiscordサーバーID')
+    discord_message_id = models.CharField(max_length=30, blank=True, help_text='DiscordメッセージID') # DiscordメッセージID
+    discord_channel_id = models.CharField(max_length=30, help_text='DiscordチャンネルID') # DiscordチャンネルID
+    discord_server_id = models.CharField(max_length=30, help_text='DiscordサーバーID') # DiscordサーバーID
 
-    discord_owner_id = models.CharField(max_length=30, help_text='募集者のID')
-    discord_owner_username = models.CharField(max_length=30, help_text='募集者の名前')
+    discord_owner_id = models.CharField(max_length=30, help_text='募集者のID') # メッセージを投稿したユーザーのID
+    discord_owner_username = models.CharField(max_length=30, help_text='募集者の名前') # メッセージを投稿したユーザーの名前
 
-    title = models.CharField(max_length=100, help_text='募集タイトル')
-    rank = models.CharField(max_length=50, blank=True, help_text='ランク条件')
+    title = models.CharField(max_length=100, help_text='募集タイトル') # 募集タイトル
+    rank = models.CharField(max_length=50, blank=True, help_text='ランク条件') # ランク条件
 
-    max_slots = models.PositiveIntegerField(default=4, help_text='最大募集人数（自分含む）')
-    current_slots = models.PositiveIntegerField(default=0, help_text='現在の参加者数')
+    max_slots = models.PositiveIntegerField(default=4, help_text='最大募集人数（自分含む）') # 最大募集人数（自分含む） 
+    current_slots = models.PositiveIntegerField(default=0, help_text='現在の参加者数') # 現在の参加者数
     
     # 参加者リスト（JSON形式）
-    participants = models.TextField(default='[]', help_text='参加者リスト')
+    participants = models.TextField(default='[]', help_text='参加者リスト') # 参加者リスト
     
     # ステータス
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
@@ -430,15 +428,15 @@ class DiscordRecruitment(models.Model):
 class DiscordServerSetting(models.Model):
     """Discordサーバーごとの設定"""
     
-    discord_server_id = models.CharField(max_length=30, unique=True, help_text='DiscordサーバーID')
-    discord_server_name = models.CharField(max_length=100, blank=True, help_text='サーバー名')
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, help_text='このサーバーのゲーム')
-    default_max_slots = models.PositiveIntegerField(default=3, help_text='デフォルト募集人数')
+    discord_server_id = models.CharField(max_length=30, unique=True, help_text='DiscordサーバーID') # DiscordサーバーID
+    discord_server_name = models.CharField(max_length=100, blank=True, help_text='サーバー名') # サーバー名
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, help_text='このサーバーのゲーム') # このサーバーのゲーム
+    default_max_slots = models.PositiveIntegerField(default=3, help_text='デフォルト募集人数') # デフォルト募集人数
     
-    voice_category_id = models.CharField(max_length=30, blank=True)
-    available_voice_channels = models.TextField(default='[]')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    voice_category_id = models.CharField(max_length=30, blank=True) # ボイスチャンネルカテゴリーID
+    available_voice_channels = models.TextField(default='[]') # 使用可能なボイスチャンネル
+    created_at = models.DateTimeField(auto_now_add=True) # 作成日時
+    updated_at = models.DateTimeField(auto_now=True) # 更新日時
     
     class Meta:
         verbose_name = 'Discordサーバー設定'
@@ -449,28 +447,28 @@ class DiscordServerSetting(models.Model):
 
 class VoiceChannelParticipation(models.Model):
     """ボイスチャンネル参加履歴"""
-    recruitment = models.ForeignKey(DiscordRecruitment, on_delete=models.CASCADE, related_name='vc_participations')
-    discord_user_id = models.CharField(max_length=30)
-    discord_username = models.CharField(max_length=100)
-    voice_channel_id = models.CharField(max_length=30)
+    recruitment = models.ForeignKey(DiscordRecruitment, on_delete=models.CASCADE, related_name='vc_participations') # 募集
+    discord_user_id = models.CharField(max_length=30) # ユーザーID
+    discord_username = models.CharField(max_length=100) # ユーザー名
+    voice_channel_id = models.CharField(max_length=30) # ボイスチャンネルID
     
-    joined_at =  models.DateTimeField(auto_now_add=True)
-    left_at = models.DateTimeField(null=True, blank=True)
-    duration_seconds = models.IntegerField(default=0)
+    joined_at =  models.DateTimeField(auto_now_add=True) # 参加日時
+    left_at = models.DateTimeField(null=True, blank=True) # 終了日時
+    duration_seconds = models.IntegerField(default=0) # 参加時間
     
     def is_eligible_for_rating(self):
         return self.duration_seconds >= 1800
 class UserRating(models.Model):
     """ユーザ評価"""
-    recruitment = models.ForeignKey(DiscordRecruitment, on_delete=models.CASCADE, related_name='ratings')
-    rater_discord_id = models.CharField(max_length=30)
-    rater_discord_username = models.CharField(max_length=100)
-    rated_discord_id = models.CharField(max_length=30)
-    rated_discord_username = models.CharField(max_length=100)
+    recruitment = models.ForeignKey(DiscordRecruitment, on_delete=models.CASCADE, related_name='ratings') # 募集
+    rater_discord_id = models.CharField(max_length=30) # 評価者ID
+    rater_discord_username = models.CharField(max_length=100) # 評価者名
+    rated_discord_id = models.CharField(max_length=30) # 評価対象者ID
+    rated_discord_username = models.CharField(max_length=100) # 評価対象者名
     
-    rating = models.IntegerField(default=5, choices=[(1,'⭐'),(2,'⭐⭐'),(3,'⭐⭐⭐'),(4,'⭐⭐⭐⭐'),(5,'⭐⭐⭐⭐⭐')])
-    comment = models.TextField(blank=True, max_length=500)
-    is_auto_submitted = models.BooleanField(default=False)
+    rating = models.IntegerField(default=5, choices=[(1,'⭐'),(2,'⭐⭐'),(3,'⭐⭐⭐'),(4,'⭐⭐⭐⭐'),(5,'⭐⭐⭐⭐⭐')]) # 評価
+    comment = models.TextField(blank=True, max_length=500) # コメント
+    is_auto_submitted = models.BooleanField(default=False) # 自動評価
     
     created_at = models.DateTimeField(auto_now_add=True)
     
