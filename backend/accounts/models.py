@@ -77,6 +77,7 @@ class Game(models.Model):
         default='pc,ps,xbox,switch,mobile,crossplay',
         help_text='対応プラットフォーム（カンマ区切り: pc,ps,xbox,switch,mobile,crossplay）'
     ) # 対応プラットフォーム（カンマ区切り: pc,ps,xbox,switch,mobile,crossplay）
+    bannerUrl = models.URLField(max_length=500, blank=True, help_text='ゲームバナーURL') # ゲームバナーURL
 
     is_active = models.BooleanField(default=True, help_text='サイトに表示するか') # サイトに表示するか  
     

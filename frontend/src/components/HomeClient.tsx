@@ -6,8 +6,9 @@ import { CurrentGameSection } from '@/components/CurrentGameSection';
 import { GameImageSection } from '@/components/GameImageSection';
 import { DiscordRecruitmentSection } from '@/components/DiscordRecruitmentSection';
 import { Footer } from '@/components/Footer';
-import { Game, User, GAMES } from '@/types/profile';
+import { Game, User } from '@/types/profile';
 import { DiscordRecruitment } from '@/types/discord';
+import { API_ENDPOINTS } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
@@ -18,19 +19,24 @@ type HomeClientProps = {
 };
 
 export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps) {
-    const [selectedGame, setSelectedGame] = useState<Game>(GAMES[0]);
+    const [selectedGame, setSelectedGame] = useState<Game | undefined>(undefined);
+    const [games, setGames] = useState<Game[]>([]); // Add state for games
     const [recruitments, setRecruitments] = useState<DiscordRecruitment[]>(initialRecruitments);
     const [myRecruitment, setMyRecruitment] = useState<DiscordRecruitment | null>(null);
     const [user, setUser] = useState<User | null>(initialUser);
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingGames, setIsLoadingGames] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
     const wsRef = useRef<WebSocket | null>(null);
 
     // クライアント側でユーザー情報を取得（認証のため）
+    // 初回レンダリング時のみ実行
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const res = await fetch(`${API_URL}/accounts/api/me/`, { credentials: 'include' });
+                const res = await fetch(API_ENDPOINTS.me, {
+                    credentials: 'include'
+                });
                 const data = await res.json();
                 if (data.authenticated) {
                     setUser(data.user);
@@ -53,6 +59,26 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
             setMyRecruitment(myRec || null);
         }
     }, [user, recruitments]);
+
+    //DBからゲーム一覧を取得
+    useEffect(() => {
+        const fetchgames = async () => {
+            try {
+                setIsLoadingGames(true);
+                const gamelist = await fetch(`${API_URL}/accounts/api/games/`);
+                const data = await gamelist.json();
+                setGames(data); //DBから取得したゲーム一覧をstateに保存
+                if (data.length > 0) {
+                    setSelectedGame(data[0]); //最初のゲームをデフォルトで選択
+                }
+            } catch (error) {
+                console.error('Games fetch error:', error);
+            } finally {
+                setIsLoadingGames(false);
+            }
+        }
+        fetchgames();
+    }, []);
 
     // WebSocket接続
     useEffect(() => {
@@ -78,17 +104,23 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
         return () => ws.close();
     }, []);
 
+    if (isLoadingGames) {
+        return <div>Loading...</div>;
+    }
+
     return (
         <div className="min-h-screen bg-[#0a0a0f] text-white">
-            <Navbar games={GAMES} selectedGame={selectedGame} onGameSelect={setSelectedGame} />
-
+            {/* ナビゲーションバー props*/}
+            <Navbar games={games} selectedGame={selectedGame} onGameSelect={setSelectedGame} />
             <main className="pt-28 pb-12">
                 <div className="max-w-6xl mx-auto px-4">
                     {/* 現在参加中のゲームバナー */}
                     {myRecruitment && <CurrentGameSection myRecruitment={myRecruitment} />}
 
                     {/* ゲームトップ画像エリア */}
-                    <GameImageSection />
+                    <GameImageSection
+                        selectedGame={selectedGame}
+                    />
 
                     {/* 募集カード一覧 */}
                     <DiscordRecruitmentSection

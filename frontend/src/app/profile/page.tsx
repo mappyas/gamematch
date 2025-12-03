@@ -5,13 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { API_ENDPOINTS } from '@/lib/api';
+import { User } from '@/types/profile';
+import { CurrentGameSection } from '@/components/CurrentGameSection';
+import { DiscordRecruitment } from '@/types/discord';
 
-type User = {
-  id: number;
-  discord_id: string;
-  discord_username: string;
-  avatar: string | null;
-};
+
 
 type MatchedUser = {
   discord_user_id: string;
@@ -34,6 +32,8 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [myRecruitment, setMyRecruitment] = useState<DiscordRecruitment | null>(null);
+  const [recruitments, setRecruitments] = useState<DiscordRecruitment[]>([]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -64,6 +64,25 @@ export default function ProfilePage() {
     fetchProfile();
   }, [router]);
 
+  useEffect(() => {
+    const fetchRecruitments = async () => {
+      const response = await fetch(API_ENDPOINTS.discordRecruitments)
+      const data = await response.json()
+      setRecruitments(data.recruitments)
+    }
+    fetchRecruitments()
+  }, [])
+
+  useEffect(() => {
+    if (profileData?.user && recruitments.length > 0) {
+      const myRec = recruitments.find(
+        (r) => r.discord_owner_id === profileData.user.discord_id ||
+          r.participants_list.some((p) => p.discord_user_id === profileData.user.discord_id)
+      );
+      setMyRecruitment(myRec || null);
+    }
+  }, [profileData?.user, recruitments]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f]">
@@ -91,19 +110,6 @@ export default function ProfilePage() {
     );
   }
 
-  const { user, matched_users = [] } = profileData;
-
-  // ダミーデータ（後でAPIから取得）
-  const dummyMatchedUsers: MatchedUser[] = [
-    { discord_user_id: '1', discord_username: 'Player1', match_count: 15, last_matched_at: '2025-12-01' },
-    { discord_user_id: '2', discord_username: 'Player2', match_count: 12, last_matched_at: '2025-12-01' },
-    { discord_user_id: '3', discord_username: 'Player3', match_count: 8, last_matched_at: '2025-11-30' },
-    { discord_user_id: '4', discord_username: 'Player4', match_count: 5, last_matched_at: '2025-11-29' },
-    { discord_user_id: '5', discord_username: 'Player5', match_count: 3, last_matched_at: '2025-11-28' },
-  ];
-
-  const displayMatchedUsers = matched_users.length > 0 ? matched_users : dummyMatchedUsers;
-
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
       <Navbar />
@@ -116,10 +122,10 @@ export default function ProfilePage() {
               {/* アバター */}
               <div className="relative">
                 <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 flex items-center justify-center overflow-hidden neon-border animate-pulse-slow">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt={user.discord_username} className="w-full h-full object-cover" />
+                  {profileData.user.avatar ? (
+                    <img src={profileData.user.avatar} alt={profileData.user.discord_username} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-5xl text-white font-bold">{user.discord_username.charAt(0).toUpperCase()}</span>
+                    <span className="text-5xl text-white font-bold">{profileData.user.discord_username.charAt(0).toUpperCase()}</span>
                   )}
                 </div>
               </div>
@@ -127,7 +133,7 @@ export default function ProfilePage() {
               {/* ユーザー情報 */}
               <div className="flex-1">
                 <h1 className="text-3xl font-bold text-white mb-2 text-gradient">プレイヤー名</h1>
-                <p className="text-gray-300 text-lg mb-6">{user.discord_username}</p>
+                <p className="text-gray-300 text-lg mb-6">{profileData.user.discord_username}</p>
                 <p className="text-amber-400 text-sm mb-6 flex items-center gap-2">
                   <span className="text-2xl">⭐</span>
                   <span>高評価: xx</span>
@@ -145,37 +151,12 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* 現在参加中のゲーム - TOP.jpeg通り */}
+          {/* 現在参加中のゲーム  */}
           <div className="mb-8 animate-slideUp">
-            <div className="glass-card rounded-2xl p-6 border-l-4 border-cyan-400 glow-strong">
-              <p className="text-gray-300 mb-6 text-lg">
-                現在参加中のゲーム：<span className="text-cyan-400 font-bold">Apex Legends</span>
-                募集タイトル：<span className="text-white font-semibold">xxxxx</span>
-                募集ランク：<span className="text-purple-400 font-semibold">xxxxxx</span>
-              </p>
-
-              {/* 参加者アイコン - 横一列 */}
-              <div className="flex items-center gap-8 justify-center">
-                {displayMatchedUsers.slice(0, 5).map((matchedUser, idx) => (
-                  <div key={matchedUser.discord_user_id} className="flex flex-col items-center group">
-                    <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${idx === 0 ? 'from-amber-400 to-orange-500' :
-                        idx % 3 === 0 ? 'from-cyan-400 to-blue-500' :
-                          idx % 3 === 1 ? 'from-purple-400 to-pink-500' :
-                            'from-green-400 to-teal-500'
-                      } flex items-center justify-center ${idx === 0 ? 'neon-border-purple' : 'neon-border'
-                      } transition-transform group-hover:scale-110`}>
-                      <span className="text-3xl text-white font-bold">
-                        {matchedUser.discord_username.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="text-sm mt-3 text-gray-300 font-medium">{matchedUser.discord_username}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {myRecruitment && <CurrentGameSection myRecruitment={myRecruitment} />}
           </div>
 
-          {/* 募集カード - TOP.jpeg通り3つ横並び */}
+          {/* 募集カード */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-6 text-gradient">募集カード</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -201,7 +182,7 @@ export default function ProfilePage() {
                     <div className="text-xs text-gray-500 mb-1">募集者</div>
                     <div className="font-medium text-white flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500" />
-                      {user.discord_username}
+                      {profileData.user.discord_username}
                     </div>
                   </div>
 

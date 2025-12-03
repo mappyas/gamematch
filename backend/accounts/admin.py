@@ -4,7 +4,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     Account, Profile, Game, GameAccount, Recruitment, Participant, 
     GameRank, RiotAccount, LoLRank,
-    VoiceChannelParticipation, UserRating
+    VoiceChannelParticipation, UserRating, DiscordRecruitment
 )
 
 
@@ -72,6 +72,10 @@ class RecruitmentAdmin(admin.ModelAdmin):
         return obj.current_players
     current_players.short_description = '現在人数'
 
+
+@admin.register(DiscordRecruitment)
+class DiscordRecruitmentAdmin(admin.ModelAdmin):
+    list_display = ['game', 'discord_owner_id', 'title']
 
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):

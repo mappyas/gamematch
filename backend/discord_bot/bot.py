@@ -114,7 +114,7 @@ class GameSelectView(discord.ui.View):
 class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成'):
     """募集作成モーダル"""
     
-    def __init__(self, game_id: int, game_name: str, max_slots: int):
+    def __init__(self, game_id: int, game_name: str):
         super().__init__()
         self.game_id = game_id
         self.game_name = game_name
@@ -155,7 +155,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                 'discord_owner_username': interaction.user.name,
                 'title': self.title_input.value,
                 'rank': self.rank_input.value,
-                'max_slots': self.max_slots,
+                'max_slots': int(self.slot_input.value),
             }
             
             try:
@@ -169,7 +169,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         embed = create_recruitment_embed(recruitment_data, self.game_name)
                         
                         # ボタンUIを作成
-                        view = RecruitmentView(recruitment_id, max_slots)
+                        view = RecruitmentView(recruitment_id, int(self.slot_input.value))
                         
                         # メッセージを送信
                         message = await interaction.followup.send(embed=embed, view=view)
@@ -409,10 +409,9 @@ async def recruit(interaction: discord.Interaction):
                     setting = data['setting']
                     game_id = setting['game_id']
                     game_name = setting['game_name']
-                    max_slots = setting['default_max_slots']
                     
                     # モーダルを表示
-                    modal = RecruitmentModal(game_id, game_name, max_slots)
+                    modal = RecruitmentModal(game_id, game_name)
                     await interaction.response.send_modal(modal)
                 else:
                     await interaction.response.send_message(

@@ -4,23 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AuthModal } from './AuthModal';
 import { API_ENDPOINTS } from '@/lib/api';
-
-type User = {
-  id: number;
-  discord_id: string;
-  discord_username: string;
-  avatar: string | null;
-  is_profile_complete: boolean;
-};
-
-type Game = {
-  id: number;
-  slug: string;
-  name: string;
-  icon: string;
-  color: string;
-  bannerUrl: string;
-};
+import { User, Game } from '@/types/profile'
 
 type NavbarProps = {
   games?: Game[];

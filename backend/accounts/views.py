@@ -5,9 +5,10 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
 import json
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from .serializers import VoiceChannelParticipationSerializer, UserRatingSerializer
 from django.utils import timezone
 
@@ -76,12 +77,10 @@ def create_profile(request):
         logger.error(f"Profile creation error: {str(e)}", exc_info=True)
         return JsonResponse({'error': 'プロフィールの作成に失敗しました'}, status=500)
 
-
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_current_user(request):
     """現在のログインユーザー情報を取得"""
-    if not request.user.is_authenticated:
-        return JsonResponse({'authenticated': False})
-    
     try:
         from .serializers import serialize_user, serialize_profile
         
@@ -110,12 +109,10 @@ def logout_user(request):
     logout(request)
     return JsonResponse({'success': True})
 
-
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_profile_detail(request):
     """マイページ用の詳細プロフィール情報を取得"""
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'ログインが必要です'}, status=401)
-    
     try:
         from .serializers import serialize_profile_detail
         data = serialize_profile_detail(request.user)
@@ -131,32 +128,15 @@ def get_profile_detail(request):
 # 募集関連API
 # ============================================
 
+@api_view(['GET'])
 def get_games(request):
     """ゲーム一覧を取得"""
+    from .serializers import serialize_game
     games = Game.objects.filter(is_active=True)
-    return JsonResponse({
-        'games': [
-            {
-                'id': game.id,
-                'slug': game.slug,
-                'name': game.name,
-                'icon': game.icon,
-                'color': game.color,
-                'max_players': game.max_players,
-                'platforms': game.platforms_list,
-                'ranks':[{
-                    'id': r.id,
-                    'rankname': r.rankname,
-                    'rankorder': r.rankorder,
-                    'icon': r.icon,
-                } for r in game.ranks.all()
-                ]
-            }
-            for game in games
-        ]
-    })
+    gamedata = [serialize_game(game) for game in games]
+    return Response(gamedata)
 
-
+@api_view(['GET'])
 def get_recruitments(request):
     """募集一覧を取得"""
     try:
@@ -196,7 +176,7 @@ def get_recruitments(request):
         logger.error(f"Get recruitments error: {str(e)}", exc_info=True)
         return JsonResponse({'error': '募集一覧の取得に失敗しました'}, status=500)
 
-
+@api_view(['GET'])
 def get_recruitment_detail(request, recruitment_id):
     """募集の詳細を取得"""
     try:
@@ -219,82 +199,10 @@ def get_recruitment_detail(request, recruitment_id):
         logger.error(f"Get recruitment detail error: {str(e)}", exc_info=True)
         return JsonResponse({'error': '募集詳細の取得に失敗しました'}, status=500)
 
-
-@csrf_exempt
-def create_recruitment(request):
-    """募集を作成"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-    
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'ログインが必要です'}, status=401)
-    
-    try:
-        data = json.loads(request.body)
-        
-        # バリデーション
-        game_id = data.get('game_id')
-        title = data.get('title', '').strip()
-        
-        if not game_id:
-            return JsonResponse({'error': 'ゲームは必須です'}, status=400)
-        
-        if not title:
-            return JsonResponse({'error': 'タイトルは必須です'}, status=400)
-        
-        if len(title) > 100:
-            return JsonResponse({'error': 'タイトルは100文字以内で入力してください'}, status=400)
-        
-        description = data.get('description', '').strip()
-        if len(description) > 500:
-            return JsonResponse({'error': '説明は500文字以内で入力してください'}, status=400)
-        
-        try:
-            game = Game.objects.get(id=game_id, is_active=True)
-        except Game.DoesNotExist:
-            return JsonResponse({'error': 'ゲームが見つかりません'}, status=400)
-        
-        platform = data.get('platform', 'pc')
-        max_players = data.get('max_players', game.max_players)
-        
-        if not isinstance(max_players, int) or max_players < 2 or max_players > 100:
-            return JsonResponse({'error': '募集人数は2〜100人の間で指定してください'}, status=400)
-        
-        # 募集作成
-        recruitment = Recruitment.objects.create(
-            owner=request.user,
-            game=game,
-            title=title,
-            description=description,
-            platform=platform,
-            max_players=max_players,
-            rank=data.get('rank', ''),
-            voice_chat=data.get('voice_chat', False),
-        )
-        
-        from .serializers import serialize_recruitment
-        return JsonResponse({
-            'success': True,
-            'recruitment': serialize_recruitment(recruitment, include_owner=False),
-        }, status=201)
-        
-    except json.JSONDecodeError:
-        return JsonResponse({'error': '無効なJSON形式です'}, status=400)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Recruitment creation error: {str(e)}", exc_info=True)
-        return JsonResponse({'error': '募集の作成に失敗しました'}, status=500)
-
-
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def join_recruitment(request, recruitment_id):
     """募集に参加"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-    
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'ログインが必要です'}, status=401)
     
     try:
         recruitment = Recruitment.objects.select_related('game', 'owner').get(id=recruitment_id)
@@ -345,15 +253,10 @@ def join_recruitment(request, recruitment_id):
         return JsonResponse({'error': '参加処理に失敗しました'}, status=500)
 
 
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def leave_recruitment(request, recruitment_id):
     """募集から離脱"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-    
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'ログインが必要です'}, status=401)
-    
     try:
         recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
         
@@ -390,15 +293,10 @@ def leave_recruitment(request, recruitment_id):
         return JsonResponse({'error': '離脱処理に失敗しました'}, status=500)
 
 
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def close_recruitment(request, recruitment_id):
     """募集を締め切り（オーナーのみ）"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-    
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'ログインが必要です'}, status=401)
-    
     try:
         recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
         
@@ -422,15 +320,10 @@ def close_recruitment(request, recruitment_id):
         return JsonResponse({'error': '締切処理に失敗しました'}, status=500)
 
 
-@csrf_exempt
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def delete_recruitment(request, recruitment_id):
     """募集を削除（オーナーのみ）"""
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'DELETE method required'}, status=405)
-    
-    if not request.user.is_authenticated:
-        return JsonResponse({'error': 'ログインが必要です'}, status=401)
-    
     try:
         recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
         
@@ -486,11 +379,9 @@ def discord_login(request):
     return JsonResponse({'auth_url': discord_auth_url})
 
 # Discord OAutch2コールバック処理
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def discord_callback(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-    
     try:
         data = json.loads(request.body)
         code = data.get('code')
@@ -588,16 +479,15 @@ def discord_callback(request):
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
-@csrf_exempt
-def discord_create_recruitment(request):
 
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
+@api_view(['POST'])
+
+def discord_create_recruitment(request):
 
     try:
         data = json.loads(request.body)
         required_fields = ['game', 'discord_channel_id', 'discord_server_id', 
-                          'discord_owner_id', 'discord_owner_username', 'title']
+                          'discord_owner_id', 'discord_owner_username', 'title', 'rank', 'max_slots']
         for field in required_fields:
             if not data.get(field):
                 return JsonResponse({'error': f'{field}は必須です'}, status=400)

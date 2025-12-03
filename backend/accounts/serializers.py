@@ -20,6 +20,7 @@ def serialize_game(game: Game) -> Dict[str, Any]:
         'slug': game.slug,
         'icon': game.icon,
         'color': game.color,
+        'bannerUrl': game.bannerUrl,
     }
 
 

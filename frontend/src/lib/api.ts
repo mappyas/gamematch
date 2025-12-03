@@ -6,27 +6,26 @@ export const API_ENDPOINTS = {
   // Discord OAuth2
   discordLogin: `${API_URL}/accounts/api/discord/login/`,
   discordCallback: `${API_URL}/accounts/api/discord/callback/`,
-  
+
   // ユーザー
   me: `${API_URL}/accounts/api/me/`,
   logout: `${API_URL}/accounts/api/logout/`,
   profile: `${API_URL}/accounts/api/profile/`,
   profileDetail: `${API_URL}/accounts/api/profile/detail/`,
-  
+
   // ゲーム・募集
   games: `${API_URL}/accounts/api/games/`,
   recruitments: `${API_URL}/accounts/api/recruitments/`,
-  createRecruitment: `${API_URL}/accounts/api/recruitments/create/`,
-  
+
   // Riot API 連携
   riotLink: `${API_URL}/accounts/api/riot/link/`,
   riotAccount: `${API_URL}/accounts/api/riot/account/`,
   riotRefresh: `${API_URL}/accounts/api/riot/refresh/`,
   riotUnlink: `${API_URL}/accounts/api/riot/unlink/`,
-  
+
   // Discord Bot 募集API
   discordRecruitments: `${API_URL}/accounts/api/discord/recruitments/`,
-  discordCreateRecruitment: `${API_URL}/accounts/api/discord/recruitments/create/`,
+  // discordCreateRecruitment: `${API_URL}/accounts/api/discord/recruitments/create/`,
 } as const;
 
 // WebSocket URL
