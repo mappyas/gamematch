@@ -481,11 +481,20 @@ def discord_callback(request):
 
 
 @api_view(['POST'])
-
 def discord_create_recruitment(request):
 
     try:
         data = json.loads(request.body)
+        
+        # リクエストを送ったユーザーのDiscord IDがDBに登録されているか確認
+        discord_owner_id = data.get('discord_owner_id')
+        if not discord_owner_id:
+            return JsonResponse({'error': 'discord_owner_idは必須です'}, status=400)
+        
+        # Discord IDがAccountモデルに登録されているか確認
+        if not Account.objects.filter(discord_id=discord_owner_id).exists():
+            return JsonResponse({'error': 'このDiscord IDは登録されていません。先にサイトでDiscordログインしてください。'}, status=404)
+        
         required_fields = ['game', 'discord_channel_id', 'discord_server_id', 
                           'discord_owner_id', 'discord_owner_username', 'title', 'rank', 'max_slots']
         for field in required_fields:

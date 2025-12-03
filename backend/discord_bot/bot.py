@@ -182,6 +182,9 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                                 print(f"✅ 募集を作成しました (ID: {recruitment_id})")
                             else:
                                 print(f"⚠️ メッセージID更新に失敗: {update_response.status}")
+                    elif response.status == 404:
+                        print(f"❌ 先にWEBサイトで登録が必要です。http://localhost:3000/")
+                        await interaction.followup.send("❌ 先にWEBサイトで登録が必要です。http://localhost:3000/", ephemeral=True)
                     else:
                         error_text = await response.text()
                         print(f"❌ 募集作成エラー: {response.status} - {error_text}")
