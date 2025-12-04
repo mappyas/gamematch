@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import aiohttp
 import asyncio
 from typing import Optional
+from discord.ext import tasks
 
 # 環境変数を読み込み
 load_dotenv()
@@ -264,8 +265,28 @@ class RecruitmentView(discord.ui.View):
                             f"✅ 募集に参加しました！ ({recruitment_data['current_slots']}/{self.max_slots})",
                             ephemeral=True
                         )
+
+                        if recruitment_data.get('status') == 'ongoing' and not recruitment_data.get('vc_channel_id'):
+                            vc_channel = await create_private_vc_channel(
+                                interaction.guild,
+                                recruitment_data
+                            )
+
+                            if vc_channel:
+                                update_url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{self.recruitment_id}/update/"
+                                update_data = {'vc_channel_id': str(vc_channel.id)}
+                                async with session.post(update_url, json=update_data) as update_response:
+                                    if update_response.status == 200:
+                                        print(f"✅ VCチャンネルID保存: {vc_channel.id}")
+                                        # recruitment_dataを更新
+                                    recruitment_data['vc_channel_id'] = str(vc_channel.id)
+                        elif recruitment_data.get('status') == 'ongoing' and recruitment_data.get('vc_channel_id'):
+                            vc_channel = interaction.guild.get_channel(int(recruitment_data.get('vc_channel_id')))
+                            if vc_channel:
+                                await add_vc_permission(vc_channel, str(interaction.user.id))
+
                         await self.update_recruitment_message(interaction, recruitment_data)
-                        
+                                                 
                         # Phase 1: 満員になったらVC招待を送信
                         if recruitment_data.get('is_full'):
                             await check_and_send_vc_invite(recruitment_data)
@@ -313,6 +334,7 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
     participants = recruitment_data.get('participants_list', [])
     owner_name = recruitment_data.get('discord_owner_username', '')
     is_full = recruitment_data.get('is_full', False)
+    vc_channel_id = recruitment_data.get('vc_channel_id')
     print(f"🔍 Embed作成: current_slots={current_slots}, max_slots={max_slots}, is_full={is_full}, participants={len(participants)}")
 
     if is_full:
@@ -351,7 +373,15 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
         value=participant_text,
         inline=False
     )
-        
+    
+    if status == 'ongoing' and vc_channel_id:
+        vc_link = f"<#{vc_channel_id}>"
+        embed.add_field(
+            name="VC", 
+            value=vc_link, 
+            inline=False
+        )
+    
     if is_full:
         embed.set_footer(text="この募集は満員です")
     else:
@@ -381,6 +411,10 @@ async def on_ready():
         print(f'✅ {len(synced)} 個のコマンドを同期しました')
     except Exception as e:
         print(f'❌ コマンド同期エラー: {e}')
+    
+    if not cleanup_closed_vcs.is_running():
+        cleanup_closed_vcs.start()
+        print("🔄 VCクリーンアップタスクを開始しました")
 
 
 @bot.tree.command(name="setup", description="このサーバーで使用するゲームを設定します（管理者用）")
@@ -522,6 +556,177 @@ async def send_vc_invite_to_participants(recruitment_id: int, guild_id: int, par
         
     except Exception as e:
         print(f"❌ VC招待送信エラー: {e}")
+
+async def create_private_vc_channel(guild, recruitment_data: dict):
+    """募集用のプライベートVCチャンネルを作成"""
+    try:
+        recruitment_id = recruitment_data.get('id')
+        title = recruitment_data.get('title')
+        participants = recruitment_data.get('participants_list', [])
+        owner_id = recruitment_data.get('discord_owner_id')
+
+        #チャンネル名
+        channel_name = f"{title} (ID:{recruitment_id})"
+
+        all_participants = [owner_id] + [p['discord_user_id'] for p in participants]
+
+        category = None
+        for cat in guild.categories:
+            if any('vc' in channel.name.lower() for channel in cat.voice_channels):
+                category = cat
+                break
+        
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(
+                view_channel=True,
+                connect=False,
+                ),
+                guild.me: discord.PermissionOverwrite(
+                    view_channel=True,
+                    connect=True,
+                    manage_channels=True
+                )
+        }
+        
+        for user_id in all_participants:
+            try:
+                member = await guild.fetch_member(int(user_id))
+                overwrites[member] = discord.PermissionOverwrite(
+                    view_channel = True,
+                    connect = True,
+                    speak = True
+                )
+            except Exception as e:
+                print(f"メンバー取得失敗({user_id}): {e}")
+
+        vc_channel = await guild.create_voice_channel(
+            name=channel_name,
+            category=category,
+            overwrites=overwrites
+        )
+
+        print(f"✅ プライベートVCチャンネルを作成しました: {vc_channel.name}")
+        return vc_channel
+
+    except Exception as e:
+        print(f"❌ VC作成エラー: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+async def add_vc_permission(vc_channel, user_id: str):
+    """VCチャンネルにユーザーの権限を追加"""
+    try:
+        guild = vc_channel.guild
+        member = await guild.fetch_member(int(user_id))
+        
+        await vc_channel.set_permissions(
+            member,
+            view_channel=True,
+            connect=True,
+            speak=True
+        )
+        
+        print(f"✅ VC権限付与: {member.name} → {vc_channel.name}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ VC権限付与エラー ({user_id}): {e}")
+        return False
+
+async def remove_vc_permission(vc_channel, user_id: str):
+    """VCチャンネルからユーザーの権限を削除"""
+    try:
+        guild = vc_channel.guild
+        member = await guild.fetch_member(int(user_id))
+        
+        await vc_channel.set_permissions(
+            member,
+            overwrite=None  # 権限を削除
+        )
+        
+        print(f"✅ VC権限削除: {member.name} → {vc_channel.name}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ VC権限削除エラー ({user_id}): {e}")
+        return False
+
+async def delete_vc_channel(vc_channel_id: str, guild):
+    """VCチャンネルを削除"""
+    try:
+        channel = guild.get_channel(int(vc_channel_id))
+        if channel:
+            await channel.delete()
+            print(f"✅ VC削除: {channel.name}")
+            return True
+        return False
+    except Exception as e:
+        print(f"❌ VC削除エラー ({vc_channel_id}): {e}")
+        return False
+
+async def check_and_delete_vc(recruitment_data: dict, bot):
+    """VCチャンネルを削除する"""
+    try:
+        vc_channel_id = recruitment_data.get('vc_channel_id')
+        server_id = recruitment_data.get('discord_server_id')
+
+        if not vc_channel_id or not server_id:
+            return
+        
+        guild = bot.get_guild(int(server_id))
+        if not guild:
+            print(f"サーバが見つかりません: {server_id}")
+            return
+        
+        await delete_vc_channel(vc_channel_id, guild)
+
+    except Exception as e:
+        print(f"VC削除エラー: {e}")
+
+@tasks.loop(minutes=5)
+async def cleanup_closed_vcs():
+    """closed状態のVCチャンネルを定期的に削除"""
+    print("🔍 VCクリーンアップタスク実行中...")
+    
+    async with aiohttp.ClientSession() as session:
+        url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/?status=closed"
+        
+        try:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    recruitments = data.get('recruitments', [])
+                    
+                    print(f"📋 closed募集数: {len(recruitments)}")
+
+                    for recruitment in recruitments:
+                        print(f"  チェック中: ID={recruitment.get('id')}, vc={recruitment.get('vc_channel_id')}")
+                        # closedでvc_channel_idがあるものを削除
+                        if recruitment.get('status') == 'closed' and recruitment.get('vc_channel_id'):
+                            server_id = recruitment.get('discord_server_id')
+                            vc_channel_id = recruitment.get('vc_channel_id')
+                            
+                            if server_id:
+                                guild = bot.get_guild(int(server_id))
+                                if guild:
+                                    await delete_vc_channel(vc_channel_id, guild)
+                                    
+                                    # DBのvc_channel_idをクリア
+                                    update_url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment.get('id')}/update/"
+                                    update_data = {'vc_channel_id': None}
+                                    async with session.post(update_url, json=update_data) as update_response:
+                                        if update_response.status == 200:
+                                            print(f"✅ VC削除完了: {vc_channel_id}")
+                                            
+        except Exception as e:
+            print(f"❌ VCクリーンアップエラー: {e}")
+    print("✅ VCクリーンアップタスク完了")
+
+@cleanup_closed_vcs.before_loop
+async def before_cleanup():
+    """Botが準備完了するまで待機"""
+    await bot.wait_until_ready()
 
 
 # 募集参加時の処理を拡張（RecruitmentView.join_buttonを更新）

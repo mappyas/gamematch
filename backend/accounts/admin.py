@@ -72,7 +72,6 @@ class RecruitmentAdmin(admin.ModelAdmin):
         return obj.current_players
     current_players.short_description = '現在人数'
 
-
 @admin.register(DiscordRecruitment)
 class DiscordRecruitmentAdmin(admin.ModelAdmin):
     list_display = ['game', 'discord_owner_id', 'title']

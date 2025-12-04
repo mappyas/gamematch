@@ -208,6 +208,7 @@ class DiscordRecruitmentSerializer(serializers.ModelSerializer):
             'participants_list',
             'status',
             'is_full',
+            'vc_channel_id',
             'created_at',
             'updated_at',
         ]

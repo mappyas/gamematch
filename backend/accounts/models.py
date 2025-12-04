@@ -326,6 +326,7 @@ class DiscordRecruitment(models.Model):
     
     STATUS_CHOICES = [
         ('open', '募集中'),
+        ('ongoing', '進行中'),
         ('closed', '締め切り'),
         ('cancelled', 'キャンセル')
     ]
@@ -348,6 +349,8 @@ class DiscordRecruitment(models.Model):
     # 参加者リスト（JSON形式）
     participants = models.TextField(default='[]', help_text='参加者リスト') # 参加者リスト
     
+    vc_channel_id = models.CharField(max_length=30, blank=True, null=True, help_text='VCチャンネルID') # VCチャンネルID
+
     # ステータス
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     
@@ -376,6 +379,9 @@ class DiscordRecruitment(models.Model):
         if any(p['discord_user_id'] == discord_user_id for p in participants_list):
             return False, "既に参加しています"
         
+        if self.status not in ['open', 'ongoing']:
+            return False, "この募集には参加できません"
+
         # 定員チェック
         if self.is_full:
             return False, "募集は満員です"
@@ -391,8 +397,8 @@ class DiscordRecruitment(models.Model):
         self.participants = json.dumps(participants_list, ensure_ascii=False)
         
         # 満員になったら募集終了
-        if self.is_full:
-            self.status = 'closed'
+        if self.is_full and self.status == 'open':
+            self.status = 'ongoing'
         
         self.save()
         return True, "参加しました"
@@ -418,8 +424,10 @@ class DiscordRecruitment(models.Model):
         # リストをJSON文字列に変換して保存
         self.participants = json.dumps(participants_list, ensure_ascii=False)
         
-        # 満員が解除されたら募集再開
-        if self.status == 'closed' and not self.is_full:
+        # 現在の参加者が0になったら募集を閉じる
+        if self.current_slots == 0:
+            self.status = 'closed'
+        elif self.status == 'closed' and not self.is_full:
             self.status = 'open'
         
         self.save()
@@ -457,8 +465,13 @@ class VoiceChannelParticipation(models.Model):
     left_at = models.DateTimeField(null=True, blank=True) # 終了日時
     duration_seconds = models.IntegerField(default=0) # 参加時間
     
+    class Meta:
+        verbose_name = 'ボイスチャンネル参加履歴'
+        verbose_name_plural = 'ボイスチャンネル参加履歴'
+
     def is_eligible_for_rating(self):
         return self.duration_seconds >= 1800
+
 class UserRating(models.Model):
     """ユーザ評価"""
     recruitment = models.ForeignKey(DiscordRecruitment, on_delete=models.CASCADE, related_name='ratings') # 募集

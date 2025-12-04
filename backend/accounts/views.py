@@ -556,13 +556,19 @@ def discord_get_recruitments(request):
     try:
         from .serializers import DiscordRecruitmentSerializer
 
-        recrutiments = DiscordRecruitment.objects.filter(status='open').select_related('game').order_by('-created_at')
+        status_filter = request.GET.get('status')
+        if status_filter:
+            recruitments = DiscordRecruitment.objects.filter(status=status_filter)
+        else:
+            recruitments = DiscordRecruitment.objects.filter(status='open')
+
+        recruitments = recruitments.select_related('game').order_by('-created_at')         
 
         server_id = request.GET.get('server_id')
         if server_id:
-            recrutiments = recrutiments.filter(discord_server_id=server_id)
+            recruitments = recruitments.filter(discord_server_id=server_id)
         
-        recruitments = recrutiments[:100]
+        recruitments = recruitments[:100]
         serializer = DiscordRecruitmentSerializer(recruitments, many=True)
 
         return JsonResponse({
@@ -612,16 +618,30 @@ def discord_join_recruitment(request,recruitment_id):
         if recruitment.discord_owner_id == discord_user_id:
             return JsonResponse({'error': '募集者は参加できません'}, status=400)
         
-        open_participants = DiscordRecruitment.objects.filter(status = 'open')
-        for other_recruitment in open_participants:
-            participants_list = json.loads(other_recruitment.participants)
-            if any(p['discord_user_id'] == discord_user_id for p in participants_list) :
-                return JsonResponse({'error': '既に参加しています'}, status=400)
-        
-        user_recruitment = DiscordRecruitment.objects.filter(discord_owner_id = discord_user_id, status = 'open').first()
-        if user_recruitment:
-            return JsonResponse({'error': '既に募集しています'}, status=400)
+        open_or_ongoing_recruitments = DiscordRecruitment.objects.filter(
+            status__in=['open', 'ongoing']
+        )
+        for other_recruitment in open_or_ongoing_recruitments:
+            # 自分自身の募集はスキップ
+            if other_recruitment.id == recruitment_id:
+                continue
             
+            participants_list = json.loads(other_recruitment.participants)
+            if any(p['discord_user_id'] == discord_user_id for p in participants_list):
+                return JsonResponse({
+                    'error': '既に他の募集に参加中です。退出してから参加してください。'
+                }, status=400)
+        
+        # 募集中（openまたはongoing）でないかチェック
+        user_recruitment = DiscordRecruitment.objects.filter(
+            discord_owner_id=discord_user_id, 
+            status__in=['open', 'ongoing']
+        ).first()
+        
+        if user_recruitment:
+            return JsonResponse({
+                'error': '既に募集しています。募集を終了してから参加してください。'
+            }, status=400)            
 
 
         success, message = recruitment.add_participant(discord_user_id, discord_username)
@@ -672,8 +692,18 @@ def discord_leave_recruitment(request, recruitment_id):
         success, message = recruitment.remove_participant(discord_user_id)
         if not success:
             return JsonResponse({'error': message}, status=400)
+        
+        recruitment.refresh_from_db()
         from .serializers import DiscordRecruitmentSerializer
         serializer = DiscordRecruitmentSerializer(recruitment)
+
+        # ★★★ 追加: closed状態でVC削除 ★★★
+        if recruitment.status == 'closed' and recruitment.vc_channel_id:
+            # VC削除リクエストをBotに送信（WebSocket経由）
+            # または、vc_channel_idをnullにしてBotに通知
+            recruitment.vc_channel_id = None
+            recruitment.save()
+
 
         # WebSocket通知を送信
         try:
@@ -697,6 +727,9 @@ def discord_leave_recruitment(request, recruitment_id):
         logger.error(f"Discord leave recruitment error: {str(e)}", exc_info=True)
         return JsonResponse({'error': '離脱処理に失敗しました'}, status=500)
 
+
+
+
 @csrf_exempt
 def discord_update_recruitment(request, recruitment_id):
     if request.method != 'POST':
@@ -715,6 +748,8 @@ def discord_update_recruitment(request, recruitment_id):
             recruitment.title = data['title']
         if 'rank' in data:
             recruitment.rank = data['rank']
+        if 'vc_channel_id' in data:
+            recruitment.vc_channel_id = data['vc_channel_id']
 
         recruitment.save()
 
