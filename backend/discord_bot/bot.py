@@ -172,7 +172,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         embed = create_recruitment_embed(recruitment_data, self.game_name)
                         
                         # ボタンUIを作成
-                        view = RecruitmentView(recruitment_id, int(self.slot_input.value))
+                        view = RecruitmentView(recruitment_id, int(self.slot_input.value), is_full=False)
                         
                         # メッセージを送信
                         message = await interaction.followup.send(embed=embed, view=view)
@@ -188,6 +188,14 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                     elif response.status == 404:
                         print(f"❌ DB未登録ユーザー")
                         await interaction.followup.send("❌ 先にWEBサイトで登録が必要です。http://localhost:3000/", ephemeral=True)
+                    elif response.status == 400:
+                        error_data = await response.json()
+                        error_message = error_data.get('error', '募集の作成に失敗しました')
+                        print(f"❌ 募集作成エラー: {error_message}")
+                        await interaction.followup.send(
+                            f"❌ {error_message}",
+                            ephemeral=True
+                        )
                     else:
                         error_text = await response.text()
                         print(f"❌ 募集作成エラー: {response.status} - {error_text}")
@@ -210,13 +218,30 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
 class RecruitmentView(discord.ui.View):
     """募集メッセージに表示されるボタンUI"""
     
-    def __init__(self, recruitment_id: int, max_slots: int):
+    def __init__(self, recruitment_id: int, max_slots: int, is_full: bool = False):
         super().__init__(timeout=None)
         self.recruitment_id = recruitment_id
         self.max_slots = max_slots
     
-    @discord.ui.button(label='参加する', style=discord.ButtonStyle.green, emoji='✅', custom_id='join_button')
-    async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not is_full:
+            join_btn = discord.ui.Button(
+                label='参加する',
+                style=discord.ButtonStyle.green,
+                emoji='✅',
+                custom_id='join_button'
+            )
+            join_btn.callback = self.join_button
+            self.add_item(join_btn)
+
+        web_btn = discord.ui.Button(
+            label='WEBで開く',
+            style=discord.ButtonStyle.link,
+            url=f"http://localhost:3000/profile",
+            emoji='🌐'
+        )
+        self.add_item(web_btn)
+    
+    async def join_button(self, interaction: discord.Interaction):
         """参加ボタン"""
         await interaction.response.defer(ephemeral=True)
         
@@ -232,6 +257,9 @@ class RecruitmentView(discord.ui.View):
                     if response.status == 200:
                         result = await response.json()
                         recruitment_data = result['recruitment']
+                        print(f"current_slots={recruitment_data.get('current_slots')}, max_slots={recruitment_data.get('max_slots')}, is_full={recruitment_data.get('is_full')}")
+
+
                         await interaction.followup.send(
                             f"✅ 募集に参加しました！ ({recruitment_data['current_slots']}/{self.max_slots})",
                             ephemeral=True
@@ -254,47 +282,19 @@ class RecruitmentView(discord.ui.View):
                 print(f"Error joining recruitment: {e}")
                 await interaction.followup.send("❌ サーバーとの通信に失敗しました", ephemeral=True)
     
-    @discord.ui.button(label='退出する', style=discord.ButtonStyle.red, emoji='❌', custom_id='leave_button')
-    async def leave_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """退出ボタン"""
-        await interaction.response.defer(ephemeral=True)
-        
-        async with aiohttp.ClientSession() as session:
-            url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{self.recruitment_id}/leave/"
-            data = {'discord_user_id': str(interaction.user.id)}
-            
-            try:
-                async with session.post(url, json=data) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        recruitment_data = result['recruitment']
-                        await interaction.followup.send(
-                            f"👋 募集から退出しました ({recruitment_data['current_slots']}/{self.max_slots})",
-                            ephemeral=True
-                        )
-                        await self.update_recruitment_message(interaction, recruitment_data)
-                    elif response.status == 400:
-                        error = await response.json()
-                        await interaction.followup.send(
-                            f"❌ {error.get('error', '退出できませんでした')}",
-                            ephemeral=True
-                        )
-                    else:
-                        await interaction.followup.send("❌ エラーが発生しました", ephemeral=True)
-            except Exception as e:
-                print(f"Error leaving recruitment: {e}")
-                await interaction.followup.send("❌ サーバーとの通信に失敗しました", ephemeral=True)
-    
     async def update_recruitment_message(self, interaction: discord.Interaction, recruitment_data: dict):
         """募集メッセージを更新"""
         try:
             game_name = recruitment_data.get('game_name', '')
+            print(f"🔍 更新前: current_slots={recruitment_data.get('current_slots')}, max_slots={recruitment_data.get('max_slots')}, is_full={recruitment_data.get('is_full')}")
             embed = create_recruitment_embed(recruitment_data, game_name)
 
             if recruitment_data.get('is_full'):
-                await interaction.message.edit(embed=embed, view=None)
+                new_view = RecruitmentView(self.recruitment_id, self.max_slots, is_full=True)
+                await interaction.message.edit(embed=embed, view=new_view)
             else:
-                await interaction.message.edit(embed=embed)
+                new_view = RecruitmentView(self.recruitment_id, self.max_slots, is_full=False)
+                await interaction.message.edit(embed=embed, view=new_view)
         except Exception as e:
             print(f"Error updating message: {e}")
 
@@ -313,10 +313,11 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
     participants = recruitment_data.get('participants_list', [])
     owner_name = recruitment_data.get('discord_owner_username', '')
     is_full = recruitment_data.get('is_full', False)
-    
+    print(f"🔍 Embed作成: current_slots={current_slots}, max_slots={max_slots}, is_full={is_full}, participants={len(participants)}")
+
     if is_full:
         embed_title = f"~~{title}~~"
-        color = discord.Color.grey()
+        color = discord.Color.greyple()
     else:
         embed_title = f"{title}"
         color = discord.Color.green()
@@ -325,29 +326,32 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
     
     # ランク条件
     if rank:
-        embed.add_field(name="ランク条件", value=f" {rank}", inline=True)
+        if is_full:
+            rank_text = f"~~{rank}~~"
+            embed.add_field(name="~~ランク条件~~", value=f" {rank_text}", inline=True)
+        else:
+            rank_text = rank    
+            embed.add_field(name="ランク条件", value=f" {rank_text}", inline=True)
     
     # 参加者リスト
+    participant_lines = []
+
+    if owner_name:
+        participant_lines.append(f"👑 {owner_name}")
     if participants:
-        participant_list = '\n'.join([f"• {p['discord_username']}" for p in participants])
-    else:
-        participant_list = "まだ参加者がいません"
+        for p in participants:
+            participant_lines.append(f"• {p['discord_username']}")
     
+    participant_text = '\n'.join(participant_lines) if participant_lines else "まだ参加者がいません"
+    participant_header = f"~~参加者 ({current_slots}/{max_slots})~~" if is_full else f"参加者 ({current_slots}/{max_slots})"
+
+
     embed.add_field(
-        name=f"参加者 ({current_slots}/{max_slots})",
-        value=participant_list,
+        name=participant_header,
+        value=participant_text,
         inline=False
     )
-    
-    # プログレスバー
-    progress = int((current_slots / max_slots) * 10) if max_slots > 0 else 0
-    progress_bar = '█' * progress + '░' * (10 - progress)
-    embed.add_field(
-        name="進捗",
-        value=f"`{progress_bar}` {current_slots}/{max_slots}",
-        inline=False
-    )
-    
+        
     if is_full:
         embed.set_footer(text="この募集は満員です")
     else:

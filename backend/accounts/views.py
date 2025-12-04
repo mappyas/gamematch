@@ -494,6 +494,20 @@ def discord_create_recruitment(request):
         if not Account.objects.filter(discord_id=discord_owner_id).exists():
             return JsonResponse({'error': 'このDiscord IDは登録されていません。先にサイトでDiscordログインしてください。'}, status=404)
         
+        existing_recruitment = DiscordRecruitment.objects.filter(
+            discord_owner_id = discord_owner_id,
+            status = 'open'
+        ).first()
+
+        if existing_recruitment:
+            return JsonResponse({'error': '既に募集中の募集は存在します。'}, status=400)
+
+        open_recruitment = DiscordRecruitment.objects.filter(status = 'open')
+        for recruitment in open_recruitment:
+            participants_list = json.loads(recruitment.participants)
+            if any(p['discord_user_id'] == discord_owner_id for p in participants_list):
+                return JsonResponse({'error': '他の募集に参加中です。'}, status=400)
+
         required_fields = ['game', 'discord_channel_id', 'discord_server_id', 
                           'discord_owner_id', 'discord_owner_username', 'title', 'rank', 'max_slots']
         for field in required_fields:
@@ -598,11 +612,24 @@ def discord_join_recruitment(request,recruitment_id):
         if recruitment.discord_owner_id == discord_user_id:
             return JsonResponse({'error': '募集者は参加できません'}, status=400)
         
+        open_participants = DiscordRecruitment.objects.filter(status = 'open')
+        for other_recruitment in open_participants:
+            participants_list = json.loads(other_recruitment.participants)
+            if any(p['discord_user_id'] == discord_user_id for p in participants_list) :
+                return JsonResponse({'error': '既に参加しています'}, status=400)
+        
+        user_recruitment = DiscordRecruitment.objects.filter(discord_owner_id = discord_user_id, status = 'open').first()
+        if user_recruitment:
+            return JsonResponse({'error': '既に募集しています'}, status=400)
+            
+
+
         success, message = recruitment.add_participant(discord_user_id, discord_username)
 
         if not success:
             return JsonResponse({'error': message}, status=400)
 
+        recruitment.refresh_from_db()
         from .serializers import DiscordRecruitmentSerializer
         serializer = DiscordRecruitmentSerializer(recruitment)
 
