@@ -188,6 +188,7 @@ class DiscordRecruitmentSerializer(serializers.ModelSerializer):
     """Discord募集のシリアライザー"""
     participants_list = serializers.SerializerMethodField()
     game_name = serializers.CharField(source='game.name', read_only=True)
+    icon = serializers.CharField(source='game.icon', read_only=True)
 
     class Meta:
         model = DiscordRecruitment
@@ -202,6 +203,7 @@ class DiscordRecruitmentSerializer(serializers.ModelSerializer):
             'discord_owner_username',
             'title',
             'rank',
+            'icon',
             'max_slots',
             'current_slots',
             'participants',

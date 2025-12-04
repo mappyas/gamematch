@@ -1,8 +1,9 @@
 // Discord Recruitment types
 export type DiscordRecruitment = {
     id: number;
-    game: number;
+    game: string;
     game_name: string;
+    icon: string;
     discord_message_id: string;
     discord_channel_id: string;
     discord_server_id: string;

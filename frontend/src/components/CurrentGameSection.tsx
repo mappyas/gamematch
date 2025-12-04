@@ -46,13 +46,18 @@ export function CurrentGameSection({ myRecruitment }: CurrentGameSectionProps) {
                             マッチ中
                         </span>
                     )}
-                </div>
+                    <p className="text-gray-200 mb-6 text-xl font-semibold">
+                        募集タイトル：<span className="text-white font-bold">{myRecruitment.title}</span><br></br>
+                        募集ランク：<span className="text-purple-400 font-bold">{myRecruitment.rank || '指定なし'}</span>
+                    </p>
 
-                <p className="text-gray-200 mb-6 text-xl font-semibold">
-                    現在参加中のゲーム：<span className="text-cyan-400 font-bold text-2xl">{myRecruitment.game_name}</span>
-                    募集タイトル：<span className="text-white font-bold">{myRecruitment.title}</span>
-                    募集ランク：<span className="text-purple-400 font-bold">{myRecruitment.rank || '指定なし'}</span>
-                </p>
+                </div>
+                <img
+                    src={myRecruitment.icon}
+                    alt=""
+                    className="w-8 h-8 rounded-full"
+                />
+
 
                 {/* 参加者アイコン - 横一列 */}
                 <div className="flex items-center gap-8 justify-center">
