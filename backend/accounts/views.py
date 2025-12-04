@@ -558,9 +558,10 @@ def discord_get_recruitments(request):
 
         status_filter = request.GET.get('status')
         if status_filter:
-            recruitments = DiscordRecruitment.objects.filter(status=status_filter)
+            statuses = status_filter.split(',')
+            recruitments = DiscordRecruitment.objects.filter(status__in=statuses)
         else:
-            recruitments = DiscordRecruitment.objects.filter(status='open')
+            recruitments = DiscordRecruitment.objects.filter(status__in=['open','ongoing'])
 
         recruitments = recruitments.select_related('game').order_by('-created_at')         
 
