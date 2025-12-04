@@ -380,7 +380,6 @@ def discord_login(request):
 
 # Discord OAutch2コールバック処理
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def discord_callback(request):
     try:
         data = json.loads(request.body)

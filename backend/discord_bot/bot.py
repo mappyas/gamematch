@@ -29,14 +29,17 @@ intents.voice_states = True  # VC状態を監視（Phase 1で追加）
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # ゲーム一覧（APIから取得するか、ハードコードするか）
-GAMES = [
-    {"id": 1, "name": "Apex Legends"},
-    {"id": 2, "name": "VALORANT"},
-    {"id": 3, "name": "League of Legends"},
-    {"id": 4, "name": "Fortnite"},
-    {"id": 5, "name": "Overwatch 2"},
-]
+GAMES = []
 
+async def fetch_startup_data():
+    global GAMES
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"{BACKEND_API_URL}/accounts/api/games/") as response:
+            if response.status == 200:
+                GAMES = await response.json()
+                print("GAMELIST取得成功")
+            else:
+                print(f"Failed to fetch games: {response.status}")
 
 # ============================================
 # ゲーム選択用 Select Menu
@@ -122,14 +125,14 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
     # タイトル入力
     title_input = discord.ui.TextInput(
         label='募集タイトル',
-        placeholder='例: ランクマッチ@2 ダイヤ目指したい！',
+        placeholder='例: ギスギスなし！　など',
         required=True,
         max_length=100
     )
 
     rank_input = discord.ui.TextInput(
         label='ランク条件',
-        placeholder='例: ダイヤ↑、問わないなど',
+        placeholder='例: ランク〇〇↑、問わない　など',
         required=True,
         max_length=50
     )
@@ -183,7 +186,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                             else:
                                 print(f"⚠️ メッセージID更新に失敗: {update_response.status}")
                     elif response.status == 404:
-                        print(f"❌ 先にWEBサイトで登録が必要です。http://localhost:3000/")
+                        print(f"❌ DB未登録ユーザー")
                         await interaction.followup.send("❌ 先にWEBサイトで登録が必要です。http://localhost:3000/", ephemeral=True)
                     else:
                         error_text = await response.text()
@@ -364,6 +367,11 @@ async def on_ready():
     print(f'Bot ID: {bot.user.id}')
     print('------')
     
+    if not hasattr(bot, 'startup_completed'):
+        await fetch_startup_data()
+        bot.startup_completed = True
+        print("Startup data fetched successfully")
+
     try:
         synced = await bot.tree.sync()
         print(f'✅ {len(synced)} 個のコマンドを同期しました')
@@ -375,9 +383,9 @@ async def on_ready():
 async def setup(interaction: discord.Interaction):
     """サーバー設定コマンド"""
     # 管理者チェック（オプション）
-    # if not interaction.user.guild_permissions.administrator:
-    #     await interaction.response.send_message("❌ このコマンドは管理者のみ使用できます", ephemeral=True)
-    #     return
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ このコマンドは管理者のみ使用できます", ephemeral=True)
+        return
     
     view = GameSelectView()
     await interaction.response.send_message(
