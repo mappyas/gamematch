@@ -3,6 +3,7 @@
 import { DiscordRecruitment } from '@/types/discord';
 import { API_ENDPOINTS } from '@/lib/api';
 import { User } from '@/types/profile';
+import { useState } from 'react';
 
 type CurrentGameSectionProps = {
     myRecruitment: DiscordRecruitment;
@@ -12,11 +13,13 @@ type CurrentGameSectionProps = {
 
 export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSectionProps) {
 
+    const [leavestatus, setleavestatus] = useState(false);
+
     const getStatusDisplay = () => {
         switch (myRecruitment.status) {
             case 'ongoing':
                 return {
-                    text: '🎮 進行中',
+                    text: '🎮 マッチ中',
                     color: 'text-blue-400',
                     borderColor: 'border-blue-400',
                 };
@@ -57,10 +60,17 @@ export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSecti
 
     const statusDisplay = getStatusDisplay();
     return (
-        <div className="mb-4 animate-slideUp">
+        <div className="mt-4 mb-4 animate-slideUp">
+
             <div className={`glass-card-strong rounded-2xl p-8 border-l-4 ${statusDisplay.borderColor} glow-purple-strong`}>
                 {/* ステータスバッジ */}
-                <div className="flex items-center gap-4 mb-4">
+                <div className="flex justify-center items-center gap-4 mb-4">
+                    <img
+                        src={myRecruitment.icon}
+                        alt=""
+                        className="w-8 h-8 rounded-full"
+                    />
+
                     <span className={`${statusDisplay.color} font-bold text-xl px-3 py-1 bg-white/10 rounded-full`}>
                         {statusDisplay.text}
                     </span>
@@ -69,17 +79,8 @@ export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSecti
                             マッチ中
                         </span>
                     )}
-                    <p className="text-gray-200 mb-6 text-xl font-semibold">
-                        募集タイトル：<span className="text-white font-bold">{myRecruitment.title}</span><br></br>
-                        募集ランク：<span className="text-purple-400 font-bold">{myRecruitment.rank || '指定なし'}</span>
-                    </p>
 
                 </div>
-                <img
-                    src={myRecruitment.icon}
-                    alt=""
-                    className="w-8 h-8 rounded-full"
-                />
 
 
                 {/* 参加者アイコン - 横一列 */}
@@ -119,7 +120,18 @@ export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSecti
                         </div>
                     ))}
                 </div>
-                <button onClick={exitGame}>退出</button>
+
+                <div className="flex justify-between items-center mt-4">
+                    <p className="text-gray-200 text-lg font-semibold">
+                        募集タイトル：<span className="text-white font-bold">{myRecruitment.title}</span>
+                        <span className="ml-4">募集ランク：<span className="text-purple-400 font-bold">{myRecruitment.rank || '指定なし'}</span></span>
+                    </p>
+
+                    <button onClick={exitGame} className="px-4 py-2 rounded-full bg-red-500">
+                        退出
+                    </button>
+                </div>
+
             </div>
         </div>
     );

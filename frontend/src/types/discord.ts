@@ -1,7 +1,7 @@
 // Discord Recruitment types
 export type DiscordRecruitment = {
     id: number;
-    game: string;
+    game: number;
     game_name: string;
     icon: string;
     discord_message_id: string;
@@ -15,8 +15,8 @@ export type DiscordRecruitment = {
     current_slots: number;
     participants: string;
     participants_list: { discord_user_id: string; discord_username: string }[];
-    status: 'open' | 'ongoing' | 'closed' | 'cancelled';  // ★★★ ongoing追加
-    vc_channel_id?: string;  // ★★★ 追加
+    status: 'open' | 'ongoing' | 'closed' | 'cancelled';
+    vc_channel_id?: string;
     is_full: boolean;
     created_at: string;
     updated_at: string;

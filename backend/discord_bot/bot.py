@@ -128,26 +128,41 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
         label='募集タイトル',
         placeholder='例: ギスギスなし！　など',
         required=True,
-        max_length=100
+        max_length=20
     )
 
     rank_input = discord.ui.TextInput(
         label='ランク条件',
         placeholder='例: ランク〇〇↑、問わない　など',
         required=True,
-        max_length=50
+        max_length=10
     )
 
     slot_input  = discord.ui.TextInput(
         label='募集人数（自分含む）',
         required=True,
         max_length=2
+        
     )
 
     async def on_submit(self, interaction: discord.Interaction):
         """モーダル送信時の処理"""
         await interaction.response.defer()
         
+        if not self.slot_input.value.isdigit():
+            await interaction.followup.send(
+                "❌ 募集人数は数字で入力してください",
+                ephemeral=True
+            )
+            return
+            
+        slot = int(self.slot_input.value)
+        if not (2 <= slot <= 10):
+            await interaction.followup.send(
+                "❌ 募集人数は2以上の数字で入力してください",
+                ephemeral=True
+            )
+            return
         # バックエンドAPIに募集を登録
         async with aiohttp.ClientSession() as session:
             url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/create/"

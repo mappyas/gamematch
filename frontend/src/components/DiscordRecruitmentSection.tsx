@@ -16,7 +16,7 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
         : [];
 
     return (
-        <div>
+        <div className="animate-slideUp">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                 <span className="text-gradient">募集カード</span>
                 <span className="text-sm text-gray-500">({filteredRecruitments.length}件)</span>

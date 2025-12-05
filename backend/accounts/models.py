@@ -340,8 +340,8 @@ class DiscordRecruitment(models.Model):
     discord_owner_id = models.CharField(max_length=30, help_text='募集者のID') # メッセージを投稿したユーザーのID
     discord_owner_username = models.CharField(max_length=30, help_text='募集者の名前') # メッセージを投稿したユーザーの名前
 
-    title = models.CharField(max_length=100, help_text='募集タイトル') # 募集タイトル
-    rank = models.CharField(max_length=50, blank=True, help_text='ランク条件') # ランク条件
+    title = models.CharField(max_length=20, help_text='募集タイトル') # 募集タイトル
+    rank = models.CharField(max_length=10, blank=True, help_text='ランク条件') # ランク条件
 
     max_slots = models.PositiveIntegerField(default=4, help_text='最大募集人数（自分含む）') # 最大募集人数（自分含む） 
     current_slots = models.PositiveIntegerField(default=0, help_text='現在の参加者数') # 現在の参加者数

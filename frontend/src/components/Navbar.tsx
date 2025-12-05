@@ -60,9 +60,8 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
             <Link href="/" className="flex-shrink-0 group">
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 flex items-center justify-center font-bold text-2xl text-white neon-border transition-transform group-hover:scale-105">
-                  PF
+                  P
                 </div>
-                <span className="text-white font-bold text-xl hidden sm:block">ロゴ</span>
               </div>
             </Link>
 
@@ -74,11 +73,19 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
                     <button
                       key={game.id}
                       onClick={() => onGameSelect?.(game)}
-                      className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${selectedGame?.id === game.id
-                        ? 'glass-card-strong text-white border-2 border-cyan-400/60 glow'
-                        : 'glass-card text-gray-400 hover:text-white border border-white/20 hover:border-cyan-400/40 hover:glow'
+                      className={
+                        `px-5 py-2.5 rounded-full text-sm font-semibold transition-all 
+                          group relative flex items-center w-12 w-17 hover:w-40 duration-300 overflow-hidden 
+                          p-2 bg-gray-800 rounded ${selectedGame?.id === game.id
+                          ? 'glass-card-strong text-white border-2 border-cyan-400/60 glow'
+                          : 'glass-card text-gray-400 hover:text-white border border-white/20 hover:border-cyan-400/40 hover:glow'
                         }`}
                     >
+                      <img
+                        src={game.icon}
+                        alt={game.name}
+                        className="w-6 h-6 rounded-full"
+                      />
                       {game.name}
                     </button>
                   ))}

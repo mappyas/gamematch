@@ -53,6 +53,7 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
         if (user && recruitments.length > 0) {
             const myRec = recruitments.find(
                 (r: DiscordRecruitment) =>
+                    r.status !== 'closed' &&
                     r.discord_owner_id === user.discord_id ||
                     r.participants_list.some((p) => p.discord_user_id === user.discord_id)
             );
@@ -120,11 +121,13 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
 
                     {/* ゲームトップ画像エリア */}
                     <GameImageSection
+                        key={`game-image-${selectedGame?.id}`}
                         selectedGame={selectedGame}
                     />
 
                     {/* 募集カード一覧 */}
                     <DiscordRecruitmentSection
+                        key={`recruitment-${selectedGame?.id}`}
                         recruitments={recruitments}
                         selectedGame={selectedGame}
                         isLoading={isLoading}
