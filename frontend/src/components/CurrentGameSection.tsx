@@ -1,12 +1,16 @@
 'use client';
 
 import { DiscordRecruitment } from '@/types/discord';
+import { API_ENDPOINTS } from '@/lib/api';
+import { User } from '@/types/profile';
 
 type CurrentGameSectionProps = {
     myRecruitment: DiscordRecruitment;
+    userdata: User;
 };
 
-export function CurrentGameSection({ myRecruitment }: CurrentGameSectionProps) {
+
+export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSectionProps) {
 
     const getStatusDisplay = () => {
         switch (myRecruitment.status) {
@@ -31,10 +35,29 @@ export function CurrentGameSection({ myRecruitment }: CurrentGameSectionProps) {
         }
     }
 
-    const statusDisplay = getStatusDisplay();
+    const exitGame = async () => {
+        try {
+            const res = await fetch(`${API_ENDPOINTS.discordRecruitments}${myRecruitment.id}/leave/`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    'discord_user_id': userdata.discord_id
+                }),
 
+            })
+            const data = await res.json();
+            console.log(data);
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    const statusDisplay = getStatusDisplay();
     return (
-        <div className="mb-8 animate-slideUp">
+        <div className="mb-4 animate-slideUp">
             <div className={`glass-card-strong rounded-2xl p-8 border-l-4 ${statusDisplay.borderColor} glow-purple-strong`}>
                 {/* ステータスバッジ */}
                 <div className="flex items-center gap-4 mb-4">
@@ -96,6 +119,7 @@ export function CurrentGameSection({ myRecruitment }: CurrentGameSectionProps) {
                         </div>
                     ))}
                 </div>
+                <button onClick={exitGame}>退出</button>
             </div>
         </div>
     );

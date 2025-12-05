@@ -678,27 +678,28 @@ def discord_join_recruitment(request,recruitment_id):
 
 @csrf_exempt
 def discord_leave_recruitment(request, recruitment_id):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-    
     try:
         data = json.loads(request.body)
-
         discord_user_id = data.get('discord_user_id')
+        print(discord_user_id)
+
         if not discord_user_id:
             return JsonResponse({'error': 'discord_user_idは必須です'}, status=400)
         
-        recruitment = DiscordRecruitment.objects.select_related('game').get(id=recruitment_id)
+        recruitment = DiscordRecruitment.objects.get(id=recruitment_id)
+        if recruitment.discord_owner_id == discord_user_id:
+            recruitment.status = 'closed'
+            recruitment.save()
+            message = '募集を終了しました'
+        else:
+            success, message = recruitment.remove_participant(discord_user_id)
+            if not success:
+                return JsonResponse({'error': message}, status=400)
 
-        success, message = recruitment.remove_participant(discord_user_id)
-        if not success:
-            return JsonResponse({'error': message}, status=400)
-        
         recruitment.refresh_from_db()
         from .serializers import DiscordRecruitmentSerializer
         serializer = DiscordRecruitmentSerializer(recruitment)
 
-        # ★★★ 追加: closed状態でVC削除 ★★★
         if recruitment.status == 'closed' and recruitment.vc_channel_id:
             # VC削除リクエストをBotに送信（WebSocket経由）
             # または、vc_channel_idをnullにしてBotに通知
@@ -774,10 +775,7 @@ def discord_update_recruitment(request, recruitment_id):
         return JsonResponse({'error': '募集情報の更新に失敗しました'}, status=500)
 
 @csrf_exempt
-def discord_delete_recruitment(request, recruitment_id):
-    if request.method != 'DELETE':
-        return JsonResponse({'error': 'DELETE method required'}, status=405)
-    
+def discord_delete_recruitment(request, recruitment_id):    
     try:
         recruitment = DiscordRecruitment.objects.select_related('game').get(id=recruitment_id)
         deleted_id = recruitment.id

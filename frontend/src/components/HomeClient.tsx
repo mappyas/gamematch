@@ -15,7 +15,7 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
 
 type HomeClientProps = {
     initialRecruitments: DiscordRecruitment[];
-    initialUser: User | null;
+    initialUser: User;
 };
 
 export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps) {
@@ -107,7 +107,8 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
     if (isLoadingGames) {
         return <div>Loading...</div>;
     }
-
+    console.log(myRecruitment);
+    console.log(user);
     return (
         <div className="min-h-screen bg-[#0a0a0f] text-white">
             {/* ナビゲーションバー props*/}
@@ -115,7 +116,7 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
             <main className="pt-28 pb-12">
                 <div className="max-w-6xl mx-auto px-4">
                     {/* 現在参加中のゲームバナー */}
-                    {myRecruitment && <CurrentGameSection myRecruitment={myRecruitment} />}
+                    {myRecruitment && user && <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />}
 
                     {/* ゲームトップ画像エリア */}
                     <GameImageSection
