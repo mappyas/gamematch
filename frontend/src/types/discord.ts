@@ -9,12 +9,13 @@ export type DiscordRecruitment = {
     discord_server_id: string;
     discord_owner_id: string;
     discord_owner_username: string;
+    discord_owner_avatar: string | null;
     title: string;
     rank: string;
     max_slots: number;
     current_slots: number;
     participants: string;
-    participants_list: { discord_user_id: string; discord_username: string }[];
+    participants_list: { discord_user_id: string; discord_username: string; avatar: string }[];
     status: 'open' | 'ongoing' | 'closed' | 'cancelled';
     vc_channel_id?: string;
     is_full: boolean;

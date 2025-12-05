@@ -8,6 +8,7 @@ type DiscordRecruitmentSectionProps = {
     selectedGame: Game | undefined;
     isLoading: boolean;
 };
+const DEFAULT_AVATAR = 'https://marketplace.canva.com/yqbBM/MAGzZ0yqbBM/1/tl/canva-discord-logo-MAGzZ0yqbBM.png';
 
 export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoading,
 }: DiscordRecruitmentSectionProps) {
@@ -35,10 +36,19 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
                     {filteredRecruitments.slice(0, 3).map((recruitment) => (
                         <div
                             key={recruitment.id}
-                            className="glass-card-strong rounded-2xl p-8 border border-purple-400/30 hover:border-cyan-400/60 transition-all card-hover glow-purple"
+                            className="glass-card-strong rounded-2xl p-3 border border-purple-400/30 hover:border-cyan-400/60 transition-all card-hover glow-purple"
                         >
-                            {/* ゲーム名 */}
-                            <div className="font-bold text-cyan-400 mb-3 text-lg text-center">{recruitment.game_name}</div>
+                            {/* ゲームアイコン */}
+                            <div className="flex items-center justify-between gap-2 font-bold text-cyan-400 mb-3 text-lg text-center">
+                                <img
+                                    src={recruitment.icon}
+                                    alt={recruitment.game_name}
+                                    className="w-6 h-6 rounded-full"
+                                />
+                                <span className={`font-bold ${recruitment.is_full ? 'text-red-400' : 'text-cyan-400'}`}>
+                                    {recruitment.current_slots}/{recruitment.max_slots}
+                                </span>
+                            </div>
 
                             {/* 募集情報 */}
                             <div className="space-y-2 mb-4">
@@ -53,27 +63,25 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
                             </div>
 
                             {/* 募集者 */}
-                            <div className="mb-4 pb-4 border-b border-white/10">
+                            <div className="pb-2 border-b border-white/50">
                                 <div className="text-xs text-gray-500 mb-1">募集者</div>
                                 <div className="font-medium text-white flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-orange-500" />
-                                    {recruitment.discord_owner_username}
-                                </div>
-                            </div>
-
-                            {/* 参加者情報 */}
-                            <div>
-                                <div className="text-xs text-gray-500 mb-2">参加者</div>
-                                <div className="text-sm text-gray-300 min-h-[40px]">
+                                    <img
+                                        src={recruitment.discord_owner_avatar || DEFAULT_AVATAR}
+                                        alt={recruitment.discord_owner_username}
+                                        className="w-6 h-6 rounded-full"
+                                    />
                                     {recruitment.participants_list.length > 0
-                                        ? recruitment.participants_list.map((p) => p.discord_username).join(', ')
+                                        ? recruitment.participants_list.map((p, index) =>
+                                            <img
+                                                key={p.discord_user_id}
+                                                src={p.avatar || DEFAULT_AVATAR}
+                                                alt={p.discord_username}
+                                                className="w-6 h-6 rounded-full"
+                                            />
+                                        )
                                         : '参加者なし'}
-                                </div>
-                                <div className="text-xs text-gray-500 mt-2 flex items-center justify-between">
-                                    <span>定員状況</span>
-                                    <span className={`font-bold ${recruitment.is_full ? 'text-red-400' : 'text-cyan-400'}`}>
-                                        {recruitment.current_slots}/{recruitment.max_slots}
-                                    </span>
+
                                 </div>
                             </div>
                         </div>

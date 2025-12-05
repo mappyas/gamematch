@@ -645,7 +645,15 @@ def discord_join_recruitment(request,recruitment_id):
             }, status=400)            
 
 
-        success, message = recruitment.add_participant(discord_user_id, discord_username)
+               # 参加者のアバターを取得
+        avatar = None
+        try:
+            account = Account.objects.get(discord_id=discord_user_id)
+            avatar = account.avatar
+        except Account.DoesNotExist:
+            pass
+
+        success, message = recruitment.add_participant(discord_user_id, discord_username, avatar)
 
         if not success:
             return JsonResponse({'error': message}, status=400)

@@ -370,7 +370,7 @@ class DiscordRecruitment(models.Model):
     def is_full(self):
         return self.current_slots >= self.max_slots
     
-    def add_participant(self, discord_user_id, discord_username):
+    def add_participant(self, discord_user_id, discord_username,avatar):
         """参加者を追加"""
         # JSON文字列をリストに変換
         participants_list = json.loads(self.participants)
@@ -390,6 +390,7 @@ class DiscordRecruitment(models.Model):
         participants_list.append({
             'discord_user_id': discord_user_id,
             'discord_username': discord_username
+
         })
         self.current_slots += 1
         

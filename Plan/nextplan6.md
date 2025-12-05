@@ -12,24 +12,27 @@
   - playernameはdiscordusername採用
 
 - DiscordRecruitmedCardの変更
-  - ゲーム名 = アイコンに
-  - カード全体をコンパクトに
-  - 名前表示は消してアイコン表示のみに変更
-  - playeravatarはdiscordavatar採用
+  - ~~ゲーム名 = アイコンに~~
+  - ~~カード全体をコンパクトに~~
+  - ~~名前表示は消してアイコン表示のみに変更~~
+  - ~~playeravatarはdiscordavatar採用~~
 
 - Currentgamesectionの変更
-  - selectedgameの画面遷移時のアニメーション追加
+  - ~~selectedgameの画面遷移時のアニメーション追加~~
   - ~~CurrentGameSectionに現在のゲームの退出ボタンを配置する。~~
-  - 参加者がいる状態で募集者が退出ボタンをおすと解散する旨のメッセージをだす
+  - ~~参加者がいる状態で募集者が退出ボタンをおすと解散する旨のメッセージをだす~~
+  - ~~参加者側に「募集者によって解散されました」のメッセージをだす~~
   - ~~全員退出でclosedに設定する。~~
-  - サイズをコンパクトに
+  - ~~サイズをコンパクトに~~
   - 名前にリンク作成
 
 - PFのロゴ変更
 
-- Navbarの変更
-  - buttonをGAME名ではなくiconに変更
+- ~~Navbarの変更~~
+  - ~~buttonをGAME名ではなくiconに変更~~
+  
 バックエンド系
+
 - DMで配信するURLを変更
 - ViewspyのRecruitDetailAPI作成
 

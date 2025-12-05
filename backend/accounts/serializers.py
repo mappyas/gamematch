@@ -189,6 +189,7 @@ class DiscordRecruitmentSerializer(serializers.ModelSerializer):
     participants_list = serializers.SerializerMethodField()
     game_name = serializers.CharField(source='game.name', read_only=True)
     icon = serializers.CharField(source='game.icon', read_only=True)
+    discord_owner_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = DiscordRecruitment
@@ -201,6 +202,7 @@ class DiscordRecruitmentSerializer(serializers.ModelSerializer):
             'discord_server_id',
             'discord_owner_id',
             'discord_owner_username',
+            'discord_owner_avatar',
             'title',
             'rank',
             'icon',
@@ -216,11 +218,28 @@ class DiscordRecruitmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'is_full', 'created_at', 'updated_at']
     
+    def get_discord_owner_avatar(self, obj):
+        """募集者のアバターURLを取得"""
+        try:
+            account = Account.objects.get(discord_id=obj.discord_owner_id)
+            return account.avatar
+        except Account.DoesNotExist:
+            return None
+    
     def get_participants_list(self, obj):
-        """participantsフィールド（JSON文字列）をリストに変換"""
+        """participantsフィールド（JSON文字列）をリストに変換し、アバターを動的に取得"""
         import json
         try:
-            return json.loads(obj.participants)
+            participants = json.loads(obj.participants)
+            # 各参加者のアバターをAccountから取得
+            for p in participants:
+                if not p.get('avatar'):
+                    try:
+                        account = Account.objects.get(discord_id=p['discord_user_id'])
+                        p['avatar'] = account.avatar
+                    except Account.DoesNotExist:
+                        p['avatar'] = None
+            return participants
         except:
             return []
 
