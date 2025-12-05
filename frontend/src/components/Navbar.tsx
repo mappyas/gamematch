@@ -86,7 +86,9 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
                         alt={game.name}
                         className="w-6 h-6 rounded-full"
                       />
-                      {game.name}
+                      <span className="absolute left-14 opacity-0 group-hover:opacity-100 transform -translate-x-3 group-hover:translate-x-0 transition-all duration-300 whitespace-nowrap text-white">
+                        {game.name}
+                      </span>
                     </button>
                   ))}
                 </div>
