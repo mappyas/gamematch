@@ -173,7 +173,7 @@ else:
     CSRF_COOKIE_SECURE = True
 
 # CSRF設定（本番環境用）
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://gamematch-d31q.vercel.app').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://gamematch-d31q-git-v1-mapios-projects.vercel.app/').split(',')
 
 # CORS設定
 CORS_ALLOW_CREDENTIALS = True
@@ -184,7 +184,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",
     "http://172.19.224.1:3000",
     "http://172.19.224.1:3001",
-    "https://gamematch-d31q.vercel.app",
+    "https://gamematch-d31q-git-v1-mapios-projects.vercel.app/",
 ]
 
 # 環境変数から追加のCORSオリジンを読み込む
