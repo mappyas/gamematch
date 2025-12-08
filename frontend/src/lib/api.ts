@@ -36,10 +36,13 @@ export const getDiscordRecruitmentUrl = (id: number) => `${API_URL}/accounts/api
 export const joinDiscordRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/discord/recruitments/${id}/join/`;
 export const leaveDiscordRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/discord/recruitments/${id}/leave/`;
 
+//プロフィール詳細
+export const getUserProfileUrl = (discordId: string) => `${API_URL}/accounts/api/profile/${discordId}/`;
+
 // 募集詳細・参加などの動的URL
-export const getRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/`;
-export const joinRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/join/`;
-export const leaveRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/leave/`;
-export const closeRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/close/`;
-export const deleteRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/delete/`;
+// export const getRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/`;
+// export const joinRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/join/`;
+// export const leaveRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/leave/`;
+// export const closeRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/close/`;
+// export const deleteRecruitmentUrl = (id: number) => `${API_URL}/accounts/api/recruitments/${id}/delete/`;
 

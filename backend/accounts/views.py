@@ -8,6 +8,7 @@ import json
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import VoiceChannelParticipationSerializer, UserRatingSerializer
 from django.utils import timezone
@@ -123,6 +124,22 @@ def get_profile_detail(request):
         logger.error(f"Profile detail error: {str(e)}", exc_info=True)
         return JsonResponse({'error': 'プロフィール情報の取得に失敗しました'}, status=500)
 
+class UserProfileView(APIView):
+
+    def get(self,request, discord_id):
+        try:
+            from .serializers import serialize_profile_detail
+            user = Account.objects.get(discord_id=discord_id)
+            data = serialize_profile_detail(user)
+            return Response(data)
+        except Account.DoesNotExist:
+            return Response({'error': 'ユーザーが見つかりません'}, status=404)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"User profile error: {str(e)}", exc_info=True)
+            return JsonResponse({'error': 'ユーザー情報の取得に失敗しました'}, status=500)
+            
 
 # ============================================
 # 募集関連API

@@ -14,7 +14,8 @@ urlpatterns = [
     # プロフィール
     path('api/profile/', views.create_profile, name='create_profile'),
     path('api/profile/detail/', views.get_profile_detail, name='get_profile_detail'),
-    
+    path('api/profile/<str:discord_id>/', views.UserProfileView.as_view(), name='user-profile'),
+
     # ゲーム
     path('api/games/', views.get_games, name='get_games'),
     
