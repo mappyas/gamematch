@@ -188,7 +188,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",
     "http://172.19.224.1:3000",
     "http://172.19.224.1:3001",
-    
+    "https://matcha-gg.com",
+    "https://api.matcha-gg.com",
 ]
 
 # 環境変数から追加のCORSオリジンを読み込む
