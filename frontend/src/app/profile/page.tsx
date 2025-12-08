@@ -153,7 +153,12 @@ export default function ProfilePage() {
 
           {/* 現在参加中のゲーム  */}
           <div className="mb-8 animate-slideUp">
-            {myRecruitment && <CurrentGameSection myRecruitment={myRecruitment} />}
+            {myRecruitment && (
+              <CurrentGameSection
+                myRecruitment={myRecruitment}
+                userdata={profileData.user}  // ← これを追加
+              />
+            )}
           </div>
 
           {/* 募集カード */}
