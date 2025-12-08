@@ -79,9 +79,10 @@ def create_profile(request):
         return JsonResponse({'error': 'プロフィールの作成に失敗しました'}, status=500)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def get_current_user(request):
     """現在のログインユーザー情報を取得"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'authenticated': False})
     try:
         from .serializers import serialize_user, serialize_profile
         
