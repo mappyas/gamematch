@@ -3,6 +3,7 @@ import { DiscordRecruitment } from '@/types/discord';
 import { User } from '@/types/profile';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const dynamic = 'force-dynamic';
 
 // サーバーサイドでデータフェッチ
 async function getInitialData() {
