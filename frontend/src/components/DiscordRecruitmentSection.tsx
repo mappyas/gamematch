@@ -30,7 +30,7 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
 
                 {isLoading ? (
                     <div className="text-center py-12">
-                        <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <div className="w-8 h-8 border-2 border-[#78A55A] border-t-transparent rounded-full animate-spin mx-auto" />
                     </div>
                 ) : filteredRecruitments.length === 0 ? (
                     <div className="text-center py-16 glass-card rounded-2xl">
@@ -41,17 +41,17 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
                         {filteredRecruitments.slice(0, 3).map((recruitment) => (
                             <div
                                 key={recruitment.id}
-                                className="glass-card-strong rounded-2xl bg-black/50 p-3 border border-purple-400/30 hover:border-cyan-400/60 transition-all card-hover glow-purple cursor-pointer"
+                                className="bg-[#1E1E1E] rounded-2xl  p-3 border transition-all card-hover glow cursor-pointer"
                                 onClick={() => setSelectedRecruitment(recruitment)}
                             >
                                 {/* ゲームアイコン */}
-                                <div className="flex items-center justify-between gap-2 font-bold text-cyan-400 mb-3 text-lg text-center">
+                                <div className="flex items-center justify-between gap-2 font-bold text-[#78A55A] mb-3 text-lg text-center">
                                     <img
                                         src={recruitment.icon}
                                         alt={recruitment.game_name}
                                         className="w-6 h-6 rounded-full"
                                     />
-                                    <span className={`font-bold ${recruitment.is_full ? 'text-red-400' : 'text-cyan-400'}`}>
+                                    <span className={`font-bold ${recruitment.is_full ? 'text-red-400' : 'text-[#78A55A]'}`}>
                                         {recruitment.current_slots}/{recruitment.max_slots}
                                     </span>
                                 </div>
@@ -64,7 +64,7 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
                                     </div>
                                     <div className="text-sm text-gray-300">
                                         <span className="text-gray-500">募集ランク：</span>
-                                        <span className="font-medium text-purple-400">{recruitment.rank || '指定なし'}</span>
+                                        <span className="font-medium text-[#fafad2]">{recruitment.rank || '指定なし'}</span>
                                     </div>
                                 </div>
 

@@ -59,14 +59,18 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-white/5 shadow-lg">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0f1115]/95 backdrop-blur-xl border-b border-white/5 shadow-lg">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between py-3">
-            {/* ロゴ */}
+            {/* ロゴ - 抹茶テーマ */}
             <Link href="/" className="flex-shrink-0 group">
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 flex items-center justify-center font-bold text-2xl text-white neon-border transition-transform group-hover:scale-105">
-                  P
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#78A55A] via-[#5a8a3a] to-[#2D4B2D] flex items-center justify-center font-bold text-2xl text-white neon-border transition-transform group-hover:scale-105">
+                  <img
+                    src="https://macha-ggs3.s3.ap-northeast-1.amazonaws.com/logo_thorw.png"
+                    alt="抹茶"
+                    className="w-14 h-14"
+                  />
                 </div>
               </div>
             </Link>
@@ -83,8 +87,8 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
                         `px-5 py-2.5 rounded-full text-sm font-semibold transition-all 
                           group relative flex items-center w-12 w-17 hover:w-40 duration-300 overflow-hidden 
                           p-2 bg-gray-800 rounded ${selectedGame?.id === game.id
-                          ? 'backdrop-blur-lg bg-white/10 text-white border-4 border-cyan-300/80 shadow-xl shadow-cyan-400/50 hover:shadow-cyan-300/80 transition-all duration-300'
-                          : 'glass-card text-gray-400 hover:text-white border border-white/20 hover:border-cyan-400/40 hover:glow'
+                          ? 'backdrop-blur-lg bg-white/10 text-white border-4 border-[#78A55A]/80 shadow-xl shadow-[#78A55A]/50 hover:shadow-[#78A55A]/80 transition-all duration-300'
+                          : 'glass-card text-gray-400 hover:text-white border border-white/20 hover:border-[#78A55A]/60 hover:glow'
                         }`}
                     >
                       <img
@@ -188,7 +192,7 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
             className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
               }`}
           >
-            <div className="px-4 py-3 border-t border-white/5 bg-[#0a0a0f]/98">
+            <div className="px-4 py-3 border-t border-white/5 bg-[#0f1115]/98">
               <p className="text-xs text-gray-500 mb-3">ゲームを選択</p>
               <div className="grid grid-cols-2 gap-2">
                 {games.map((game) => (
@@ -196,7 +200,7 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
                     key={game.id}
                     onClick={() => handleGameSelect(game)}
                     className={`flex items-center gap-3 p-3 rounded-xl transition-all ${selectedGame?.id === game.id
-                      ? 'bg-cyan-500/20 border border-cyan-400/60'
+                      ? 'bg-[#78A55A]/20 border border-[#78A55A]/60'
                       : 'bg-white/5 border border-white/10 hover:bg-white/10'
                       }`}
                   >

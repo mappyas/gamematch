@@ -111,7 +111,7 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
     console.log(myRecruitment);
     console.log(user);
     return (
-        <div className="min-h-screen bg-[#0a0a0f] text-white">
+        <div className="min-h-screen bg-[#0f1115] text-white">
             {/* ナビゲーションバー props*/}
             <Navbar games={games} selectedGame={selectedGame} onGameSelect={setSelectedGame} />
             <main className="relative z-10 pt-28 pb-12">

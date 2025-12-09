@@ -1,10 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #ededed;
-  --accent-cyan: #22d3ee;
-  --accent-purple: #a855f7;
+  --background: #0f1115;
+  --foreground: #F5F3EF;
+  /* 抹茶 × クリームイエロー テーマ */
+  --accent-matcha: #78A55A;
+  --accent-matcha-dark: #2D4B2D;
+  --accent-cream: #fafad2;
+  --accent-cream-dark: #e8e8b8;
+  /* 互換性のため残す */
+  --accent-cyan: #78A55A;
+  --accent-purple: #fafad2;
 }
 
 @theme inline {
@@ -24,6 +30,7 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -40,12 +47,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(120, 165, 90, 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(120, 165, 90, 0.5);
 }
 
 /* アニメーション */
@@ -54,6 +61,7 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -65,6 +73,7 @@ body {
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -76,6 +85,7 @@ body {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -83,9 +93,12 @@ body {
 }
 
 @keyframes pulse-slow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -112,9 +125,9 @@ body {
   background: radial-gradient(ellipse at center, var(--tw-gradient-from), var(--tw-gradient-to));
 }
 
-/* テキストグラデーション */
+/* テキストグラデーション - 抹茶テーマ */
 .text-gradient {
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+  background: linear-gradient(135deg, var(--accent-matcha), var(--accent-gold));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -130,32 +143,46 @@ body {
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
 }
 
-/* グロー効果 */
+/* グロー効果 - 抹茶グリーン */
 .glow {
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+  box-shadow: 0 0 20px rgba(120, 165, 90, 0.3);
 }
 
 .glow-purple {
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 20px rgba(250, 250, 210, 0.3);
 }
 
 .glow-strong {
-  box-shadow: 0 0 30px rgba(34, 211, 238, 0.6), 0 0 60px rgba(34, 211, 238, 0.3);
+  box-shadow: 0 0 30px rgba(120, 165, 90, 0.6), 0 0 60px rgba(120, 165, 90, 0.3);
 }
 
 .glow-purple-strong {
-  box-shadow: 0 0 30px rgba(168, 85, 247, 0.6), 0 0 60px rgba(168, 85, 247, 0.3);
+  box-shadow: 0 0 30px rgba(250, 250, 210, 0.5), 0 0 60px rgba(120, 165, 90, 0.3);
 }
 
-/* ネオンボーダー */
+/* 抹茶グロー */
+.glow-matcha {
+  box-shadow: 0 0 20px rgba(120, 165, 90, 0.4);
+}
+
+.glow-matcha-strong {
+  box-shadow: 0 0 30px rgba(120, 165, 90, 0.6), 0 0 60px rgba(120, 165, 90, 0.3);
+}
+
+/* クリームイエローグロー */
+.glow-cream {
+  box-shadow: 0 0 20px rgba(250, 250, 210, 0.4);
+}
+
+/* ネオンボーダー - 抹茶グリーン */
 .neon-border {
-  border: 2px solid rgba(34, 211, 238, 0.5);
-  box-shadow: 0 0 15px rgba(34, 211, 238, 0.3), inset 0 0 15px rgba(34, 211, 238, 0.1);
+  border: 2px solid rgba(120, 165, 90, 0.5);
+  box-shadow: 0 0 15px rgba(120, 165, 90, 0.3), inset 0 0 15px rgba(120, 165, 90, 0.1);
 }
 
 .neon-border-purple {
-  border: 2px solid rgba(168, 85, 247, 0.5);
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3), inset 0 0 15px rgba(168, 85, 247, 0.1);
+  border: 2px solid rgba(201, 168, 75, 0.5);
+  box-shadow: 0 0 15px rgba(201, 168, 75, 0.3), inset 0 0 15px rgba(201, 168, 75, 0.1);
 }
 
 /* グラスモーフィズム */
@@ -186,8 +213,8 @@ body {
   overflow: hidden;
 }
 
-/* セレクション */
+/* セレクション - 抹茶グリーン */
 ::selection {
-  background: rgba(34, 211, 238, 0.3);
+  background: rgba(120, 165, 90, 0.3);
   color: white;
 }
