@@ -86,8 +86,8 @@ export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSecti
 
 
                 {/* 参加者アイコン - 横スクロール対応 */}
-                <div className="overflow-x-auto scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0">
-                    <div className="flex items-center gap-4 sm:gap-8 justify-start sm:justify-center min-w-max">
+                <div className="overflow-x-auto  scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0">
+                    <div className="flex items-center  gap-4 sm:gap-8 justify-start sm:justify-center min-w-max">
                         {/* 募集者 */}
                         <div className="flex flex-col items-center group flex-shrink-0">
                             <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center neon-border-purple transition-transform group-hover:scale-110">

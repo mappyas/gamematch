@@ -164,7 +164,7 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="text-xs text-gray-500 hover:text-white transition-colors hidden sm:block"
+                      className="text-xs text-gray-500 hover:text-white "
                     >
                       ログアウト
                     </button>

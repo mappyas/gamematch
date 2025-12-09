@@ -116,8 +116,8 @@ export default function ProfilePage() {
 
       <main className="pt-28 pb-12">
         <div className="max-w-6xl mx-auto px-4">
-          {/* プロフィールカード - TOP.jpeg通り */}
-          <div className="glass-card-strong rounded-2xl p-8 mb-8 glow-strong animate-fadeIn">
+          {/* プロフィールカード */}
+          <div className="glass-card-strong rounded-2xl p-4 mb-8 glow-strong animate-fadeIn">
             <div className="flex items-center gap-8">
               {/* アバター */}
               <div className="relative">
