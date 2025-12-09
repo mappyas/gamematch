@@ -148,7 +148,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = BASE_DIR / 'static'
 
 # WhiteNoise設定（本番環境での静的ファイル配信）　Djangoadminのみ使用
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
