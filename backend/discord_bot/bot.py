@@ -203,7 +203,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                                 print(f"⚠️ メッセージID更新に失敗: {update_response.status}")
                     elif response.status == 404:
                         print(f"❌ DB未登録ユーザー")
-                        await interaction.followup.send("❌ 先にWEBサイトで登録が必要です。http://localhost:3000/", ephemeral=True)
+                        await interaction.followup.send("❌ 先にWEBサイトで登録が必要です。https://matcha-gg.com/", ephemeral=True)
                     elif response.status == 400:
                         error_data = await response.json()
                         error_message = error_data.get('error', '募集の作成に失敗しました')
@@ -252,7 +252,7 @@ class RecruitmentView(discord.ui.View):
         web_btn = discord.ui.Button(
             label='WEBで開く',
             style=discord.ButtonStyle.link,
-            url=f"http://localhost:3000/profile",
+            url=f"https://matcha-gg.com/profile",
             emoji='🌐'
         )
         self.add_item(web_btn)

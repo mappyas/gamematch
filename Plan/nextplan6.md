@@ -5,11 +5,11 @@
 フロントエンド系
 
 - RecruitDetailの作成
-  - モーダルで作成する。
-  - 募集者の名前と参加者の名前を表示する。
+  - ~~モーダルで作成する。~~
+  - ~~募集者の名前と参加者の名前を表示する。~~
   - 名前にリンクを貼りクリック可能
-  - avatarにdiscordavatar採用
-  - playernameはdiscordusername採用
+  - ~~avatarにdiscordavatar採用~~
+  - ~~playernameはdiscordusername採用~~
 
 - DiscordRecruitmedCardの変更
   - ~~ゲーム名 = アイコンに~~
