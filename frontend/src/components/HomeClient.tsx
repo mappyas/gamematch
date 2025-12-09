@@ -114,7 +114,7 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
         <div className="min-h-screen bg-[#0a0a0f] text-white">
             {/* ナビゲーションバー props*/}
             <Navbar games={games} selectedGame={selectedGame} onGameSelect={setSelectedGame} />
-            <main className="pt-28 pb-12">
+            <main className="relative z-10 pt-28 pb-12">
                 <div className="max-w-6xl mx-auto px-4">
                     {/* 現在参加中のゲームバナー */}
                     {myRecruitment && user && <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />}

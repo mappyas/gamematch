@@ -62,7 +62,7 @@ export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSecti
 
     const statusDisplay = getStatusDisplay();
     return (
-        <div className="mt-4 mb-4 animate-slideUp">
+        <div className="mt-4 mb-4 animate-slideUp rounded-2xl bg-black/50">
 
             <div className={`glass-card-strong rounded-2xl p-8 border-l-4 ${statusDisplay.borderColor} glow-purple-strong`}>
                 {/* ステータスバッジ */}

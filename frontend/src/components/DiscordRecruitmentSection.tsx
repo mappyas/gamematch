@@ -22,7 +22,7 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
 
     return (
         <>
-            <div className="animate-slideUp">
+            <div className="animate-slideUp ">
                 <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                     <span className="text-gradient">募集カード</span>
                     <span className="text-sm text-gray-500">({filteredRecruitments.length}件)</span>
@@ -41,7 +41,7 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
                         {filteredRecruitments.slice(0, 3).map((recruitment) => (
                             <div
                                 key={recruitment.id}
-                                className="glass-card-strong rounded-2xl p-3 border border-purple-400/30 hover:border-cyan-400/60 transition-all card-hover glow-purple cursor-pointer"
+                                className="glass-card-strong rounded-2xl bg-black/50 p-3 border border-purple-400/30 hover:border-cyan-400/60 transition-all card-hover glow-purple cursor-pointer"
                                 onClick={() => setSelectedRecruitment(recruitment)}
                             >
                                 {/* ゲームアイコン */}
