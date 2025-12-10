@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { CurrentGameSection } from '@/components/CurrentGameSection';
-import { GameImageSection } from '@/components/GameImageSection';
 import { DiscordRecruitmentSection } from '@/components/DiscordRecruitmentSection';
 import { Footer } from '@/components/Footer';
 import { Game, User } from '@/types/profile';
@@ -111,19 +110,37 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
     console.log(myRecruitment);
     console.log(user);
     return (
-        <div className="min-h-screen bg-[#0f1115] text-white">
+        <div className="min-h-screen text-white relative">
+            {/* 背景画像（selectedGameの画像） */}
+            <div
+                className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+                style={{
+                    backgroundImage: selectedGame?.bannerUrl
+                        ? `url(${selectedGame.bannerUrl})`
+                        : 'linear-gradient(180deg, #0f1115 0%, #1a1a20 100%)'
+                }}
+            >
+                {/* オーバーレイ */}
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+            </div>
+
             {/* ナビゲーションバー props*/}
             <Navbar games={games} selectedGame={selectedGame} onGameSelect={setSelectedGame} />
-            <main className="relative z-10 pt-28 pb-12">
-                <div className="max-w-6xl mx-auto px-4">
-                    {/* 現在参加中のゲームバナー */}
-                    {myRecruitment && user && <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />}
 
+            <main className="relative z-10 pt-28 pb-12">
+                {/* 現在参加中のゲームバナー - 全幅表示のためコンテナの外へ */}
+                {myRecruitment && user && (
+                    <div className="w-full mb-8">
+                        <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />
+                    </div>
+                )}
+
+                <div className="max-w-6xl mx-auto px-4">
                     {/* ゲームトップ画像エリア */}
-                    <GameImageSection
+                    {/* <GameImageSection
                         key={`game-image-${selectedGame?.id}`}
                         selectedGame={selectedGame}
-                    />
+                    /> */}
 
                     {/* 募集カード一覧 */}
                     <DiscordRecruitmentSection
