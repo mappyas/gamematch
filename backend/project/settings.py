@@ -118,7 +118,7 @@ if os.environ.get('DATABASE_URL'):
         )
     }
 else:
-    # 開発環境ではSQLiteを使用
+    # 開発環境ではSQLite使用
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
