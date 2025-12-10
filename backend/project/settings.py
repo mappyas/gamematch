@@ -96,7 +96,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-# 開発環境でRedisがない場合はインメモリバックエンドを使用
+# 開発環境でRedisがない場合はインメモリバックエンド使用
 if DEBUG and not os.environ.get('REDIS_HOST'):
     CHANNEL_LAYERS = {
         'default': {
