@@ -2,25 +2,18 @@
 
 :root {
   --background: #0f1115;
-  --foreground: #F5F3EF;
-  /* 抹茶 × クリームイエロー テーマ */
-  --accent-matcha: #78A55A;
-  --accent-matcha-dark: #2D4B2D;
-  --accent-cream: #fafad2;
-  --accent-cream-dark: #e8e8b8;
-  /* 互換性のため残す */
-  --accent-cyan: #78A55A;
-  --accent-purple: #fafad2;
+  --foreground: #e0e0e0;
 
-  /* 和風テーマ - 木の板・畳 */
-  --wood-light: #c4a35a;
-  --wood-medium: #a68b4b;
-  --wood-dark: #8b7340;
-  --wood-border: #6b5a30;
-  --tatami-light: #a8b56b;
-  --tatami-dark: #8a9456;
-  --vermillion: #d35339;
-  --ink-black: #1a1a1a;
+  /* ゲーミングテーマ - シンプルダーク */
+  --gaming-bg-dark: #0a0a0f;
+  --gaming-bg-panel: #15171e;
+  --gaming-accent: #00ff88;
+  /* Matcha Green Neon */
+  --gaming-accent-sub: #00cfd6;
+  /* Cyan - 控えめに */
+  --gaming-border: #2a2d35;
+  --gaming-text-main: #ffffff;
+  --gaming-text-sub: #a0a0a0;
 }
 
 @theme inline {
@@ -31,9 +24,10 @@
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--background);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
 }
 
 /* スクロールバー非表示 */
