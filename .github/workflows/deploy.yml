@@ -17,4 +17,4 @@ jobs:
           script: |
             cd /var/www/gamematch
             git pull origin v1
-            systemctl restart gunicorn
+            sudo systemctl restart gunicorn
