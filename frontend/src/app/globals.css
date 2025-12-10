@@ -11,6 +11,16 @@
   /* 互換性のため残す */
   --accent-cyan: #78A55A;
   --accent-purple: #fafad2;
+
+  /* 和風テーマ - 木の板・畳 */
+  --wood-light: #c4a35a;
+  --wood-medium: #a68b4b;
+  --wood-dark: #8b7340;
+  --wood-border: #6b5a30;
+  --tatami-light: #a8b56b;
+  --tatami-dark: #8a9456;
+  --vermillion: #d35339;
+  --ink-black: #1a1a1a;
 }
 
 @theme inline {
@@ -217,4 +227,156 @@ body {
 ::selection {
   background: rgba(120, 165, 90, 0.3);
   color: white;
+}
+
+/* ==================== 和風スタイル ==================== */
+
+/* 木の板 Navbar */
+.wood-navbar {
+  background: linear-gradient(180deg,
+      #d4b896 0%,
+      #c4a35a 15%,
+      #a68b4b 50%,
+      #8b7340 85%,
+      #6b5a30 100%);
+  border-bottom: 4px solid #5a4a20;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 絵馬ボード（木の板パネル） */
+.ema-board {
+  background: linear-gradient(180deg,
+      #e8d4a0 0%,
+      #d4b896 10%,
+      #c4a35a 50%,
+      #b89548 90%,
+      #a68b4b 100%);
+  border: 4px solid #8b7340;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+    0 8px 20px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+/* 絵馬の屋根 */
+.ema-roof {
+  position: relative;
+}
+
+.ema-roof::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 80px solid transparent;
+  border-right: 80px solid transparent;
+  border-bottom: 40px solid #8b7340;
+}
+
+/* 巻物スタイル */
+.scroll-card {
+  background: linear-gradient(90deg,
+      #f4e8c1 0%,
+      #f9f3e3 10%,
+      #f9f3e3 90%,
+      #f4e8c1 100%);
+  border: 2px solid #c4a35a;
+  border-radius: 4px;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.scroll-card::before,
+.scroll-card::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 20px;
+  background: linear-gradient(90deg,
+      #a68b4b,
+      #c4a35a 20%,
+      #c4a35a 80%,
+      #a68b4b);
+  border-radius: 10px;
+}
+
+.scroll-card::before {
+  top: -10px;
+  left: 0;
+}
+
+.scroll-card::after {
+  bottom: -10px;
+  left: 0;
+}
+
+/* 畳背景 */
+.tatami-bg {
+  background:
+    repeating-linear-gradient(0deg,
+      #a8b56b 0px,
+      #a8b56b 2px,
+      #8a9456 2px,
+      #8a9456 4px),
+    linear-gradient(90deg, #a8b56b, #8a9456);
+  background-size: 100% 4px, 100% 100%;
+}
+
+/* 提灯スタイルボタン */
+.lantern-button {
+  background: linear-gradient(180deg, #e84a3b 0%, #d35339 50%, #b84030 100%);
+  border: 2px solid #a33020;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.lantern-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* 墨絵風アイコン */
+.ink-circle {
+  background: radial-gradient(circle,
+      #1a1a1a 0%,
+      #2a2a2a 70%,
+      #3a3a3a 100%);
+  border: 2px solid #4a4a4a;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 空きスロット（月形） */
+.empty-slot {
+  background: radial-gradient(circle at 30% 30%,
+      #3a3a3a 0%,
+      #1a1a1a 50%,
+      #0a0a0a 100%);
+  border: 2px solid #4a4a4a;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6a6a6a;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+/* 手書き風ロゴ */
+.handwritten-logo {
+  font-family: 'Caveat', 'Klee One', cursive, sans-serif;
+  color: #2a2a1a;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.3);
 }
