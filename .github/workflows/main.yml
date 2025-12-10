@@ -15,6 +15,6 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /var/www/gamematch/backend
+            cd /var/www/gamematch
             git pull origin v1
             sudo systemctl restart gunicorn
