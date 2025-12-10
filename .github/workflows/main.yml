@@ -16,5 +16,5 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /var/www/gamematch
-            sudo git pull origin v1
-            sudo systemctl restart gunicorn
+            git pull origin v1
+            systemctl restart gunicorn
