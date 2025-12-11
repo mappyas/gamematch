@@ -746,7 +746,7 @@ def discord_join_recruitment(request,recruitment_id):
                 'discord_channel_id': recruitment.discord_channel_id,
             }
 
-            r.publish('discord_bot_notification', json.dumps(bot_notification))
+            r.publish('discord_bot_notifications', json.dumps(bot_notification))
             print(f"Published bot notification: {recruitment_id}")
         except Exception as redis_error:
             print(f"Redisエラー: {redis_error}")
@@ -918,6 +918,8 @@ def discord_get_server_setting(request, server_id):
                 'game_id': setting.game.id,
                 'game_name': setting.game.name,
                 'default_max_slots': setting.default_max_slots,
+                'webhook_url': setting.webhook_url or '',  # webhook_urlを追加
+                'recruitment_channel_id': setting.recruitment_channel_id or '',  # recruitment_channel_idも追加
             }
         })
     except DiscordServerSetting.DoesNotExist:

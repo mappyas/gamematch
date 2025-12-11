@@ -118,10 +118,11 @@ class GameSelectView(discord.ui.View):
 class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成'):
     """募集作成モーダル"""
     
-    def __init__(self, game_id: int, game_name: str):
+    def __init__(self, game_id: int, game_name: str, webhook_url: str = None):
         super().__init__()
         self.game_id = game_id
         self.game_name = game_name
+        self.webhook_url = webhook_url  # Webhook URLを保持
     
     # タイトル入力
     title_input = discord.ui.TextInput(
@@ -190,12 +191,37 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         # ボタンUIを作成
                         view = RecruitmentView(recruitment_id, int(self.slot_input.value), is_full=False)
                         
-                        # メッセージを送信
-                        message = await interaction.followup.send(embed=embed, view=view)
+                        webhook_message = None
+                        
+                        # Webhookがあればユーザー名義で投稿
+                        if self.webhook_url:
+                            try:
+                                webhook = discord.Webhook.from_url(self.webhook_url, session=session)
+                                # ユーザーのアバターURLを取得
+                                avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
+                                webhook_message = await webhook.send(
+                                    embed=embed,
+                                    username=interaction.user.display_name,
+                                    avatar_url=avatar_url,
+                                    wait=True
+                                )
+                                print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
+                                
+                                # Botがボタンメッセージを別途送信
+                                await interaction.channel.send(
+                                    content=f"📢 **{interaction.user.display_name}** さんの募集です！",
+                                    view=view
+                                )
+                            except Exception as webhook_error:
+                                print(f"⚠️ Webhook投稿エラー: {webhook_error}")
+                        
+                        # Webhookがない場合は通常投稿（Bot名義でボタン付き）
+                        if not webhook_message:
+                            webhook_message = await interaction.followup.send(embed=embed, view=view)
                         
                         # メッセージIDをバックエンドに送信して保存
                         update_url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/update/"
-                        update_data = {'discord_message_id': str(message.id)}
+                        update_data = {'discord_message_id': str(webhook_message.id)}
                         async with session.post(update_url, json=update_data) as update_response:
                             if update_response.status == 200:
                                 print(f"✅ 募集を作成しました (ID: {recruitment_id})")
@@ -451,9 +477,10 @@ async def recruit(interaction: discord.Interaction):
                     setting = data['setting']
                     game_id = setting['game_id']
                     game_name = setting['game_name']
+                    webhook_url = setting.get('webhook_url', '')  # webhook_urlを取得
                     
-                    # モーダルを表示
-                    modal = RecruitmentModal(game_id, game_name)
+                    # モーダルを表示（webhook_urlを渡す）
+                    modal = RecruitmentModal(game_id, game_name, webhook_url)
                     await interaction.response.send_modal(modal)
                 else:
                     await interaction.response.send_message(
@@ -884,36 +911,41 @@ async def handle_create_embed_notification(data: dict):
         view = RecruitmentView(recruitment_id, recruitment_data.get('max_slots', 4), is_full=False)
         
         webhook_message = None
-        button_message = None
         channel = bot.get_channel(int(channel_id)) if channel_id else None
         
         if not channel:
             print(f"❌ チャンネルが見つかりません: {channel_id}")
             return
         
-        # Webhook経由で投稿（ユーザー名義 + ボタン）- Botをクライアントとして渡す
+        # Webhook経由で投稿（ユーザー名義・Embedのみ）
         if webhook_url:
             try:
-                # Botをクライアントとして渡すことでviewが動作する（はず）
-                webhook = discord.Webhook.from_url(webhook_url, client=bot)
-                webhook_message = await webhook.send(
-                    embed=embed,
-                    view=view,  # ボタンも一緒に送信
-                    username=owner_username,
-                    avatar_url=owner_avatar if owner_avatar else None,
-                    wait=True
-                )
-                print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
+                async with aiohttp.ClientSession() as session:
+                    webhook = discord.Webhook.from_url(webhook_url, session=session)
+                    webhook_message = await webhook.send(
+                        embed=embed,
+                        username=owner_username,
+                        avatar_url=owner_avatar if owner_avatar else None,
+                        wait=True
+                    )
+                    print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
                     
             except Exception as webhook_error:
                 print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
                 import traceback
                 traceback.print_exc()
         
-        # Webhookがない、または失敗した場合は通常投稿（Bot名義でボタン付き）
+        # Webhookがない、または失敗した場合は通常投稿（Bot名義でEmbed+ボタン）
         if not webhook_message:
             webhook_message = await channel.send(embed=embed, view=view)
-            print(f"✅ 通常投稿でEmbed送信: message_id={webhook_message.id}")
+            print(f"✅ 通常投稿でEmbed+ボタン送信: message_id={webhook_message.id}")
+        else:
+            # Webhookで投稿できた場合、Botが別途ボタンメッセージを送信
+            await channel.send(
+                content=f"📢 **{owner_username}** さんの募集です！",
+                view=view
+            )
+            print(f"✅ Botボタンメッセージ送信完了")
         
         # メッセージIDをバックエンドに保存（Webhookメッセージの方を保存）
         if webhook_message:
