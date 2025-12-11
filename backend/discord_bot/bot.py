@@ -193,38 +193,25 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         
                         webhook_message = None
                         
-                        # Bot作成Webhookで投稿（ユーザー名義 + ボタン）
-                        try:
-                            # ユーザーのアバターURLを取得
-                            avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
-                            
-                            # チャンネルの既存Webhookを取得、なければ作成
-                            webhooks = await interaction.channel.webhooks()
-                            matcha_webhook = None
-                            for wh in webhooks:
-                                if wh.name == "Matcha募集" and wh.user == bot.user:
-                                    matcha_webhook = wh
-                                    break
-                            
-                            if not matcha_webhook:
-                                matcha_webhook = await interaction.channel.create_webhook(name="Matcha募集")
-                                print(f"✅ 新規Webhook作成: {matcha_webhook.id}")
-                            
-                            # ユーザー情報でメッセージ送信
-                            webhook_message = await matcha_webhook.send(
-                                embed=embed,
-                                view=view,
-                                username=interaction.user.display_name,
-                                avatar_url=avatar_url,
-                                wait=True
-                            )
-                            print(f"✅ Bot作成Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
-                        except Exception as webhook_error:
-                            print(f"⚠️ Webhook投稿エラー: {webhook_error}")
-                            import traceback
-                            traceback.print_exc()
+                        webhook_message = None
                         
-                        # Webhookがない場合は通常投稿（Bot名義でボタン付き）
+                        # Webhookがあればユーザー名義で投稿（ボタンなし、Embed内にリンクあり）
+                        if self.webhook_url:
+                            try:
+                                webhook = discord.Webhook.from_url(self.webhook_url, session=session)
+                                # ユーザーのアバターURLを取得
+                                avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
+                                webhook_message = await webhook.send(
+                                    embed=embed,
+                                    username=interaction.user.display_name,
+                                    avatar_url=avatar_url,
+                                    wait=True
+                                )
+                                print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
+                            except Exception as webhook_error:
+                                print(f"⚠️ Webhook投稿エラー: {webhook_error}")
+                        
+                        # Webhookがない場合は通常投稿（Bot名義）
                         if not webhook_message:
                             webhook_message = await interaction.followup.send(embed=embed, view=view)
                         
@@ -425,12 +412,25 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
         inline=False
     )
     
+    
     if status == 'ongoing' and vc_channel_id:
         vc_link = f"<#{vc_channel_id}>"
         embed.add_field(
-            name="VC", 
-            value=vc_link, 
+            name="🔊 ボイスチャンネル",
+            value=f"{vc_link} で通話中！",
             inline=False
+        )
+        
+    # ボタンの代わりにリンクを表示
+    recruitment_id = recruitment_data.get('id')
+    if recruitment_id and not is_full:
+        join_url = f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true"
+        detail_url = f"https://matcha-gg.com/recruitment/{recruitment_id}"
+        
+        # リンクを見やすく表示
+        embed.description = (
+            f"### [✅ WEBですぐ参加する]({join_url})\n"
+            f"[🌐 詳細をWEBで見る]({detail_url})"
         )
     
     if is_full:
@@ -926,37 +926,28 @@ async def handle_create_embed_notification(data: dict):
             print(f"❌ チャンネルが見つかりません: {channel_id}")
             return
         
-        # Bot作成Webhookで投稿（ユーザー名義 + ボタン）
-        # Botが作成したWebhookはアプリ所有なのでviewが動作する
-        try:
-            # チャンネルの既存Webhookを取得、なければ作成
-            webhooks = await channel.webhooks()
-            matcha_webhook = None
-            for wh in webhooks:
-                if wh.name == "Matcha募集" and wh.user == bot.user:
-                    matcha_webhook = wh
-                    break
-            
-            if not matcha_webhook:
-                matcha_webhook = await channel.create_webhook(name="Matcha募集")
-                print(f"✅ 新規Webhook作成: {matcha_webhook.id}")
-            
-            # ユーザー情報でメッセージ送信
-            webhook_message = await matcha_webhook.send(
-                embed=embed,
-                view=view,
-                username=owner_username,
-                avatar_url=owner_avatar if owner_avatar else None,
-                wait=True
-            )
-            print(f"✅ Bot作成Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
-                
-        except Exception as webhook_error:
-            print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
-            import traceback
-            traceback.print_exc()
+        # Webhook経由で投稿（ユーザー名義、ボタンなし）
+        if webhook_url:
+            try:
+                # view=None にすることで通常のWebhookとして送信（ユーザー名義が正常に機能する）
+                async with aiohttp.ClientSession() as session:
+                    webhook = discord.Webhook.from_url(webhook_url, session=session)
+                    webhook_message = await webhook.send(
+                        embed=embed,
+                        username=owner_username,
+                        avatar_url=owner_avatar if owner_avatar else None,
+                        wait=True
+                    )
+                print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
+                    
+            except Exception as webhook_error:
+                print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
+                import traceback
+                traceback.print_exc()
         
         # Webhookがない、または失敗した場合は通常投稿（Bot名義でEmbed+ボタン）
+        # ※ Embed内にリンクがあるのでBot名義の場合もViewは不要かもしれないが、念のため残すか迷うところ。
+        # 一旦Bot名義の場合はViewを残しておく（Webhook失敗時のフォールバックとして）。
         if not webhook_message:
             webhook_message = await channel.send(embed=embed, view=view)
             print(f"✅ 通常投稿でEmbed+ボタン送信: message_id={webhook_message.id}")
