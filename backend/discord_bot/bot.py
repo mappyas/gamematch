@@ -880,42 +880,54 @@ async def handle_create_embed_notification(data: dict):
         embed = create_recruitment_embed(recruitment_data, game_name)
         view = RecruitmentView(recruitment_id, recruitment_data.get('max_slots', 4), is_full=False)
         
-        message = None
+        webhook_message = None
+        button_message = None
+        channel = bot.get_channel(int(channel_id)) if channel_id else None
         
-        # Webhook経由で投稿（ユーザー名義）
+        if not channel:
+            print(f"❌ チャンネルが見つかりません: {channel_id}")
+            return
+        
+        # Webhook経由で投稿（ユーザー名義・ボタンなし）
         if webhook_url:
             try:
                 async with aiohttp.ClientSession() as session:
                     webhook = discord.Webhook.from_url(webhook_url, session=session)
-                    message = await webhook.send(
+                    webhook_message = await webhook.send(
                         embed=embed,
-                        view=view,
                         username=owner_username,
                         avatar_url=owner_avatar if owner_avatar else None,
                         wait=True
                     )
-                    print(f"✅ Webhook経由でEmbed投稿: message_id={message.id}")
+                    print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
+                    
+                    # Botがリプライでボタンを追加
+                    # webhook_messageからDiscord側のメッセージを取得
+                    discord_message = await channel.fetch_message(webhook_message.id)
+                    button_message = await discord_message.reply(
+                        content="参加はこちらから👇",
+                        view=view
+                    )
+                    print(f"✅ Botリプライでボタン追加: message_id={button_message.id}")
+                    
             except Exception as webhook_error:
                 print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
+                import traceback
+                traceback.print_exc()
         
-        # Webhookがない、または失敗した場合は通常投稿
-        if not message and channel_id:
-            channel = bot.get_channel(int(channel_id))
-            if channel:
-                message = await channel.send(embed=embed, view=view)
-                print(f"✅ 通常投稿でEmbed送信: message_id={message.id}")
-            else:
-                print(f"❌ チャンネルが見つかりません: {channel_id}")
-                return
+        # Webhookがない、または失敗した場合は通常投稿（Bot名義でボタン付き）
+        if not webhook_message:
+            webhook_message = await channel.send(embed=embed, view=view)
+            print(f"✅ 通常投稿でEmbed送信: message_id={webhook_message.id}")
         
-        # メッセージIDをバックエンドに保存
-        if message:
+        # メッセージIDをバックエンドに保存（Webhookメッセージの方を保存）
+        if webhook_message:
             async with aiohttp.ClientSession() as session:
                 update_url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/update/"
-                update_data = {'discord_message_id': str(message.id)}
+                update_data = {'discord_message_id': str(webhook_message.id)}
                 async with session.post(update_url, json=update_data) as update_response:
                     if update_response.status == 200:
-                        print(f"✅ メッセージID保存完了: {message.id}")
+                        print(f"✅ メッセージID保存完了: {webhook_message.id}")
                     else:
                         print(f"⚠️ メッセージID保存エラー: {update_response.status}")
                         
