@@ -193,27 +193,36 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         
                         webhook_message = None
                         
-                        # Webhookがあればユーザー名義で投稿（ボタン付き）
-                        # client=bot を使用することでviewが動作する
-                        if self.webhook_url:
-                            try:
-                                # ユーザーのアバターURLを取得
-                                avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
-                                
-                                # Botをクライアントとして渡すことでviewが動作する
-                                webhook = discord.Webhook.from_url(self.webhook_url, client=bot)
-                                webhook_message = await webhook.send(
-                                    embed=embed,
-                                    view=view,
-                                    username=interaction.user.display_name,
-                                    avatar_url=avatar_url,
-                                    wait=True
-                                )
-                                print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
-                            except Exception as webhook_error:
-                                print(f"⚠️ Webhook投稿エラー: {webhook_error}")
-                                import traceback
-                                traceback.print_exc()
+                        # Bot作成Webhookで投稿（ユーザー名義 + ボタン）
+                        try:
+                            # ユーザーのアバターURLを取得
+                            avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
+                            
+                            # チャンネルの既存Webhookを取得、なければ作成
+                            webhooks = await interaction.channel.webhooks()
+                            matcha_webhook = None
+                            for wh in webhooks:
+                                if wh.name == "Matcha募集" and wh.user == bot.user:
+                                    matcha_webhook = wh
+                                    break
+                            
+                            if not matcha_webhook:
+                                matcha_webhook = await interaction.channel.create_webhook(name="Matcha募集")
+                                print(f"✅ 新規Webhook作成: {matcha_webhook.id}")
+                            
+                            # ユーザー情報でメッセージ送信
+                            webhook_message = await matcha_webhook.send(
+                                embed=embed,
+                                view=view,
+                                username=interaction.user.display_name,
+                                avatar_url=avatar_url,
+                                wait=True
+                            )
+                            print(f"✅ Bot作成Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
+                        except Exception as webhook_error:
+                            print(f"⚠️ Webhook投稿エラー: {webhook_error}")
+                            import traceback
+                            traceback.print_exc()
                         
                         # Webhookがない場合は通常投稿（Bot名義でボタン付き）
                         if not webhook_message:
@@ -917,25 +926,35 @@ async def handle_create_embed_notification(data: dict):
             print(f"❌ チャンネルが見つかりません: {channel_id}")
             return
         
-        # Webhook経由で投稿（ユーザー名義 + ボタン）
-        # client=bot を使用することでviewが動作する
-        if webhook_url:
-            try:
-                # Botをクライアントとして渡すことでviewが動作する
-                webhook = discord.Webhook.from_url(webhook_url, client=bot)
-                webhook_message = await webhook.send(
-                    embed=embed,
-                    view=view,
-                    username=owner_username,
-                    avatar_url=owner_avatar if owner_avatar else None,
-                    wait=True
-                )
-                print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
-                    
-            except Exception as webhook_error:
-                print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
-                import traceback
-                traceback.print_exc()
+        # Bot作成Webhookで投稿（ユーザー名義 + ボタン）
+        # Botが作成したWebhookはアプリ所有なのでviewが動作する
+        try:
+            # チャンネルの既存Webhookを取得、なければ作成
+            webhooks = await channel.webhooks()
+            matcha_webhook = None
+            for wh in webhooks:
+                if wh.name == "Matcha募集" and wh.user == bot.user:
+                    matcha_webhook = wh
+                    break
+            
+            if not matcha_webhook:
+                matcha_webhook = await channel.create_webhook(name="Matcha募集")
+                print(f"✅ 新規Webhook作成: {matcha_webhook.id}")
+            
+            # ユーザー情報でメッセージ送信
+            webhook_message = await matcha_webhook.send(
+                embed=embed,
+                view=view,
+                username=owner_username,
+                avatar_url=owner_avatar if owner_avatar else None,
+                wait=True
+            )
+            print(f"✅ Bot作成Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
+                
+        except Exception as webhook_error:
+            print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
+            import traceback
+            traceback.print_exc()
         
         # Webhookがない、または失敗した場合は通常投稿（Bot名義でEmbed+ボタン）
         if not webhook_message:
