@@ -732,6 +732,24 @@ def discord_join_recruitment(request,recruitment_id):
         if not success:
             return JsonResponse({'error': message}, status=400)
 
+        try:
+            import redis
+            import os
+            redis_host = os.environ.get('REDIS_HOST', '127.0.0.1')
+            redis_port = int(os.environ.get('REDIS_PORT', 6379))
+            r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+
+            bot_notification = {
+                'type': 'update_embed',
+                'recruitment_id': recruitment.id,
+                'discord_message_id': recruitment.discord_message_id,
+                'discord_channel_id': recruitment.discord_channel_id,
+            }
+
+            r.publish('discord_bot_notification', json.dumps(bot_notification))
+            print(f"Published bot notification: {recruitment_id}")
+        except Exception as redis_error:
+            print(f"Redisエラー: {redis_error}")
         recruitment.refresh_from_db()
         from .serializers import DiscordRecruitmentSerializer
         serializer = DiscordRecruitmentSerializer(recruitment)

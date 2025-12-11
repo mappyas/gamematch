@@ -240,23 +240,24 @@ class RecruitmentView(discord.ui.View):
         self.max_slots = max_slots
     
         if not is_full:
+            # URLリンクボタン（WEBで参加）
             join_btn = discord.ui.Button(
-                label='参加する',
-                style=discord.ButtonStyle.green,
-                emoji='✅',
-                custom_id='join_button'
+                label='WEBで参加する',
+                style=discord.ButtonStyle.link,
+                url=f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true",
+                emoji='✅'
             )
-            join_btn.callback = self.join_button
             self.add_item(join_btn)
-
+        
+        # WEBで開く（既存）
         web_btn = discord.ui.Button(
-            label='WEBで開く',
+            label='詳細を見る',
             style=discord.ButtonStyle.link,
-            url=f"https://matcha-gg.com/profile",
+            url=f"https://matcha-gg.com/recruitment/{recruitment_id}",
             emoji='🌐'
         )
         self.add_item(web_btn)
-    
+        
     async def join_button(self, interaction: discord.Interaction):
         """参加ボタン"""
         await interaction.response.defer(ephemeral=True)
@@ -846,6 +847,8 @@ async def redis_subscriber():
                     
                     if data.get('type') == 'create_embed':
                         await handle_create_embed_notification(data)
+                    elif data.get('type') == 'update_embed':
+                        await handle_update_embed_notification(data)
                         
                 except Exception as e:
                     print(f"❌ Redis通知処理エラー: {e}")
@@ -928,6 +931,45 @@ async def handle_create_embed_notification(data: dict):
         import traceback
         traceback.print_exc()
 
+async def handle_update_embed_notification(data: dict):
+    """WEB参加時のEmbed更新通知を処理"""
+    try:
+        recruitment_id = data.get('recruitment_id')
+        message_id = data.get('discord_message_id')
+        channel_id = data.get('discord_channel_id')
+        
+        if not message_id or not channel_id:
+            print(f"❌ Embed更新: message_idまたはchannel_idがありません")
+            return
+        
+        # 最新の募集データを取得
+        async with aiohttp.ClientSession() as session:
+            url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/"
+            async with session.get(url) as response:
+                if response.status != 200:
+                    return
+                result = await response.json()
+                recruitment_data = result['recruitment']
+        
+        # チャンネルとメッセージを取得
+        channel = bot.get_channel(int(channel_id))
+        if not channel:
+            print(f"❌ チャンネルが見つかりません: {channel_id}")
+            return
+        
+        message = await channel.fetch_message(int(message_id))
+        
+        # 新しいEmbedを作成して更新
+        game_name = recruitment_data.get('game_name', '')
+        embed = create_recruitment_embed(recruitment_data, game_name)
+        view = RecruitmentView(recruitment_id, recruitment_data.get('max_slots', 4), 
+                               is_full=recruitment_data.get('is_full', False))
+        
+        await message.edit(embed=embed, view=view)
+        print(f"✅ Embed更新完了: recruitment_id={recruitment_id}")
+        
+    except Exception as e:
+        print(f"❌ Embed更新エラー: {e}")
 
 @bot.event
 async def on_ready():

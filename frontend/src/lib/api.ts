@@ -26,6 +26,8 @@ export const API_ENDPOINTS = {
   // Discord Bot 募集API
   discordRecruitments: `${API_URL}/accounts/api/discord/recruitments/`,
   discordCreateRecruitment: `${API_URL}/accounts/api/discord/recruitments/create/`,
+  discordRecruitmentDetail: (id: string | number) => `${API_URL}/accounts/api/discord/recruitments/${id}/`,
+  discordJoinRecruitment: (id: string | number) => `${API_URL}/accounts/api/discord/recruitments/${id}/join/`,
 } as const;
 
 // WebSocket URL
