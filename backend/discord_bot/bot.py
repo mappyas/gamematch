@@ -888,27 +888,19 @@ async def handle_create_embed_notification(data: dict):
             print(f"❌ チャンネルが見つかりません: {channel_id}")
             return
         
-        # Webhook経由で投稿（ユーザー名義・ボタンなし）
+        # Webhook経由で投稿（ユーザー名義 + ボタン）- Botをクライアントとして渡す
         if webhook_url:
             try:
-                async with aiohttp.ClientSession() as session:
-                    webhook = discord.Webhook.from_url(webhook_url, session=session)
-                    webhook_message = await webhook.send(
-                        embed=embed,
-                        username=owner_username,
-                        avatar_url=owner_avatar if owner_avatar else None,
-                        wait=True
-                    )
-                    print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
-                    
-                    # Botがリプライでボタンを追加
-                    # webhook_messageからDiscord側のメッセージを取得
-                    discord_message = await channel.fetch_message(webhook_message.id)
-                    button_message = await discord_message.reply(
-                        content="参加はこちらから👇",
-                        view=view
-                    )
-                    print(f"✅ Botリプライでボタン追加: message_id={button_message.id}")
+                # Botをクライアントとして渡すことでviewが動作する（はず）
+                webhook = discord.Webhook.from_url(webhook_url, client=bot)
+                webhook_message = await webhook.send(
+                    embed=embed,
+                    view=view,  # ボタンも一緒に送信
+                    username=owner_username,
+                    avatar_url=owner_avatar if owner_avatar else None,
+                    wait=True
+                )
+                print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
                     
             except Exception as webhook_error:
                 print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
