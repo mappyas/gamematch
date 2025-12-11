@@ -310,85 +310,85 @@ class RecruitmentView(discord.ui.View):
         self.recruitment_id = recruitment_id
         self.max_slots = max_slots
     
-        if not is_full:
-            # URLリンクボタン（WEBで参加）
-            join_btn = discord.ui.Button(
-                label='WEBで参加する',
-                style=discord.ButtonStyle.link,
-                url=f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true",
-                emoji='✅'
-            )
-            self.add_item(join_btn)
+    #     if not is_full:
+    #         # URLリンクボタン（WEBで参加）
+    #         join_btn = discord.ui.Button(
+    #             label='WEBで参加する',
+    #             style=discord.ButtonStyle.link,
+    #             url=f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true",
+    #             emoji='✅'
+    #         )
+    #         self.add_item(join_btn)
         
-        # WEBで開く（既存）
-        web_btn = discord.ui.Button(
-            label='詳細を見る',
-            style=discord.ButtonStyle.link,
-            url=f"https://matcha-gg.com/recruitment/{recruitment_id}",
-            emoji='🌐'
-        )
-        self.add_item(web_btn)
+    #     # WEBで開く（既存）
+    #     web_btn = discord.ui.Button(
+    #         label='詳細を見る',
+    #         style=discord.ButtonStyle.link,
+    #         url=f"https://matcha-gg.com/recruitment/{recruitment_id}",
+    #         emoji='🌐'
+    #     )
+    #     self.add_item(web_btn)
         
-    async def join_button(self, interaction: discord.Interaction):
-        """参加ボタン"""
-        await interaction.response.defer(ephemeral=True)
+    # async def join_button(self, interaction: discord.Interaction):
+    #     """参加ボタン"""
+    #     await interaction.response.defer(ephemeral=True)
         
-        async with aiohttp.ClientSession() as session:
-            url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{self.recruitment_id}/join/"
-            data = {
-                'discord_user_id': str(interaction.user.id),
-                'discord_username': interaction.user.name
-            }
+    #     async with aiohttp.ClientSession() as session:
+    #         url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{self.recruitment_id}/join/"
+    #         data = {
+    #             'discord_user_id': str(interaction.user.id),
+    #             'discord_username': interaction.user.name
+    #         }
             
-            try:
-                async with session.post(url, json=data) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        recruitment_data = result['recruitment']
-                        print(f"current_slots={recruitment_data.get('current_slots')}, max_slots={recruitment_data.get('max_slots')}, is_full={recruitment_data.get('is_full')}")
+    #         try:
+    #             async with session.post(url, json=data) as response:
+    #                 if response.status == 200:
+    #                     result = await response.json()
+    #                     recruitment_data = result['recruitment']
+    #                     print(f"current_slots={recruitment_data.get('current_slots')}, max_slots={recruitment_data.get('max_slots')}, is_full={recruitment_data.get('is_full')}")
 
 
-                        await interaction.followup.send(
-                            f"✅ 募集に参加しました！ ({recruitment_data['current_slots']}/{self.max_slots})",
-                            ephemeral=True
-                        )
+    #                     await interaction.followup.send(
+    #                         f"✅ 募集に参加しました！ ({recruitment_data['current_slots']}/{self.max_slots})",
+    #                         ephemeral=True
+    #                     )
 
-                        if recruitment_data.get('status') == 'ongoing' and not recruitment_data.get('vc_channel_id'):
-                            vc_channel = await create_private_vc_channel(
-                                interaction.guild,
-                                recruitment_data
-                            )
+    #                     if recruitment_data.get('status') == 'ongoing' and not recruitment_data.get('vc_channel_id'):
+    #                         vc_channel = await create_private_vc_channel(
+    #                             interaction.guild,
+    #                             recruitment_data
+    #                         )
 
-                            if vc_channel:
-                                update_url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{self.recruitment_id}/update/"
-                                update_data = {'vc_channel_id': str(vc_channel.id)}
-                                async with session.post(update_url, json=update_data) as update_response:
-                                    if update_response.status == 200:
-                                        print(f"✅ VCチャンネルID保存: {vc_channel.id}")
-                                        # recruitment_dataを更新
-                                    recruitment_data['vc_channel_id'] = str(vc_channel.id)
-                        elif recruitment_data.get('status') == 'ongoing' and recruitment_data.get('vc_channel_id'):
-                            vc_channel = interaction.guild.get_channel(int(recruitment_data.get('vc_channel_id')))
-                            if vc_channel:
-                                await add_vc_permission(vc_channel, str(interaction.user.id))
+    #                         if vc_channel:
+    #                             update_url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{self.recruitment_id}/update/"
+    #                             update_data = {'vc_channel_id': str(vc_channel.id)}
+    #                             async with session.post(update_url, json=update_data) as update_response:
+    #                                 if update_response.status == 200:
+    #                                     print(f"✅ VCチャンネルID保存: {vc_channel.id}")
+    #                                     # recruitment_dataを更新
+    #                                 recruitment_data['vc_channel_id'] = str(vc_channel.id)
+    #                     elif recruitment_data.get('status') == 'ongoing' and recruitment_data.get('vc_channel_id'):
+    #                         vc_channel = interaction.guild.get_channel(int(recruitment_data.get('vc_channel_id')))
+    #                         if vc_channel:
+    #                             await add_vc_permission(vc_channel, str(interaction.user.id))
 
-                        await self.update_recruitment_message(interaction, recruitment_data)
+    #                     await self.update_recruitment_message(interaction, recruitment_data)
                                                  
-                        # Phase 1: 満員になったらVC招待を送信
-                        if recruitment_data.get('is_full'):
-                            await check_and_send_vc_invite(recruitment_data)
+    #                     # Phase 1: 満員になったらVC招待を送信
+    #                     if recruitment_data.get('is_full'):
+    #                         await check_and_send_vc_invite(recruitment_data)
                         
-                    elif response.status == 400:
-                        error = await response.json()
-                        await interaction.followup.send(
-                            f"❌ {error.get('error', '参加できませんでした')}",
-                            ephemeral=True
-                        )
-                    else:
-                        await interaction.followup.send("❌ エラーが発生しました", ephemeral=True)
-            except Exception as e:
-                print(f"Error joining recruitment: {e}")
-                await interaction.followup.send("❌ サーバーとの通信に失敗しました", ephemeral=True)
+    #                 elif response.status == 400:
+    #                     error = await response.json()
+    #                     await interaction.followup.send(
+    #                         f"❌ {error.get('error', '参加できませんでした')}",
+    #                         ephemeral=True
+    #                     )
+    #                 else:
+    #                     await interaction.followup.send("❌ エラーが発生しました", ephemeral=True)
+    #         except Exception as e:
+    #             print(f"Error joining recruitment: {e}")
+    #             await interaction.followup.send("❌ サーバーとの通信に失敗しました", ephemeral=True)
     
     async def update_recruitment_message(self, interaction: discord.Interaction, recruitment_data: dict):
         """募集メッセージを更新"""
