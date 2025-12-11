@@ -193,7 +193,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         
                         webhook_message = None
                         
-                        # Webhookがあればユーザー名義で投稿
+                        # Webhookがあればユーザー名義で投稿（URLリンクボタン付き）
                         if self.webhook_url:
                             try:
                                 webhook = discord.Webhook.from_url(self.webhook_url, session=session)
@@ -201,17 +201,12 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                                 avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
                                 webhook_message = await webhook.send(
                                     embed=embed,
+                                    view=view,  # URLリンクボタンを含める
                                     username=interaction.user.display_name,
                                     avatar_url=avatar_url,
                                     wait=True
                                 )
-                                print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
-                                
-                                # Botがボタンメッセージを別途送信
-                                await interaction.channel.send(
-                                    content=f"📢 **{interaction.user.display_name}** さんの募集です！",
-                                    view=view
-                                )
+                                print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
                             except Exception as webhook_error:
                                 print(f"⚠️ Webhook投稿エラー: {webhook_error}")
                         
@@ -917,18 +912,20 @@ async def handle_create_embed_notification(data: dict):
             print(f"❌ チャンネルが見つかりません: {channel_id}")
             return
         
-        # Webhook経由で投稿（ユーザー名義・Embedのみ）
+        # Webhook経由で投稿（ユーザー名義 + URLリンクボタン）
+        # URLリンクボタンはBot処理不要なのでWebhookでも動作可能
         if webhook_url:
             try:
                 async with aiohttp.ClientSession() as session:
                     webhook = discord.Webhook.from_url(webhook_url, session=session)
                     webhook_message = await webhook.send(
                         embed=embed,
+                        view=view,  # URLリンクボタンを含める
                         username=owner_username,
                         avatar_url=owner_avatar if owner_avatar else None,
                         wait=True
                     )
-                    print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
+                    print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
                     
             except Exception as webhook_error:
                 print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
@@ -939,13 +936,6 @@ async def handle_create_embed_notification(data: dict):
         if not webhook_message:
             webhook_message = await channel.send(embed=embed, view=view)
             print(f"✅ 通常投稿でEmbed+ボタン送信: message_id={webhook_message.id}")
-        else:
-            # Webhookで投稿できた場合、Botが別途ボタンメッセージを送信
-            await channel.send(
-                content=f"📢 **{owner_username}** さんの募集です！",
-                view=view
-            )
-            print(f"✅ Botボタンメッセージ送信完了")
         
         # メッセージIDをバックエンドに保存（Webhookメッセージの方を保存）
         if webhook_message:
