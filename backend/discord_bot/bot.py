@@ -194,19 +194,58 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         webhook_message = None
                         
                         # Webhookがあればユーザー名義で投稿（URLリンクボタン付き）
+                        # discord.pyのviewはwebhookで使えないため、直接components JSONを送信
                         if self.webhook_url:
                             try:
-                                webhook = discord.Webhook.from_url(self.webhook_url, session=session)
                                 # ユーザーのアバターURLを取得
                                 avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
-                                webhook_message = await webhook.send(
-                                    embed=embed,
-                                    view=view,  # URLリンクボタンを含める
-                                    username=interaction.user.display_name,
-                                    avatar_url=avatar_url,
-                                    wait=True
-                                )
-                                print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
+                                
+                                # URLリンクボタンをcomponents形式で作成
+                                components = [
+                                    {
+                                        "type": 1,  # ACTION_ROW
+                                        "components": [
+                                            {
+                                                "type": 2,  # BUTTON
+                                                "style": 5,  # LINK
+                                                "label": "WEBで参加する",
+                                                "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true",
+                                                "emoji": {"name": "✅"}
+                                            },
+                                            {
+                                                "type": 2,  # BUTTON
+                                                "style": 5,  # LINK
+                                                "label": "詳細を見る",
+                                                "url": f"https://matcha-gg.com/recruitment/{recruitment_id}",
+                                                "emoji": {"name": "🌐"}
+                                            }
+                                        ]
+                                    }
+                                ]
+                                
+                                # Webhook URLに直接POSTリクエスト
+                                payload = {
+                                    "embeds": [embed.to_dict()],
+                                    "components": components,
+                                    "username": interaction.user.display_name,
+                                }
+                                if avatar_url:
+                                    payload["avatar_url"] = avatar_url
+                                
+                                async with session.post(f"{self.webhook_url}?wait=true", json=payload) as wh_response:
+                                    if wh_response.status in [200, 204]:
+                                        wh_result = await wh_response.json()
+                                        webhook_message_id = wh_result.get('id')
+                                        print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message_id}")
+                                        
+                                        # webhook_messageオブジェクトを作成（IDのみ必要）
+                                        class FakeMessage:
+                                            def __init__(self, id):
+                                                self.id = id
+                                        webhook_message = FakeMessage(webhook_message_id)
+                                    else:
+                                        error_text = await wh_response.text()
+                                        print(f"⚠️ Webhook投稿エラー: {wh_response.status} - {error_text}")
                             except Exception as webhook_error:
                                 print(f"⚠️ Webhook投稿エラー: {webhook_error}")
                         
@@ -913,19 +952,56 @@ async def handle_create_embed_notification(data: dict):
             return
         
         # Webhook経由で投稿（ユーザー名義 + URLリンクボタン）
-        # URLリンクボタンはBot処理不要なのでWebhookでも動作可能
+        # discord.pyのviewはwebhookで使えないため、直接components JSONを送信
         if webhook_url:
             try:
                 async with aiohttp.ClientSession() as session:
-                    webhook = discord.Webhook.from_url(webhook_url, session=session)
-                    webhook_message = await webhook.send(
-                        embed=embed,
-                        view=view,  # URLリンクボタンを含める
-                        username=owner_username,
-                        avatar_url=owner_avatar if owner_avatar else None,
-                        wait=True
-                    )
-                    print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
+                    # URLリンクボタンをcomponents形式で作成
+                    components = [
+                        {
+                            "type": 1,  # ACTION_ROW
+                            "components": [
+                                {
+                                    "type": 2,  # BUTTON
+                                    "style": 5,  # LINK
+                                    "label": "WEBで参加する",
+                                    "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true",
+                                    "emoji": {"name": "✅"}
+                                },
+                                {
+                                    "type": 2,  # BUTTON
+                                    "style": 5,  # LINK
+                                    "label": "詳細を見る",
+                                    "url": f"https://matcha-gg.com/recruitment/{recruitment_id}",
+                                    "emoji": {"name": "🌐"}
+                                }
+                            ]
+                        }
+                    ]
+                    
+                    # Webhook URLに直接POSTリクエスト
+                    payload = {
+                        "embeds": [embed.to_dict()],
+                        "components": components,
+                        "username": owner_username,
+                    }
+                    if owner_avatar:
+                        payload["avatar_url"] = owner_avatar
+                    
+                    async with session.post(f"{webhook_url}?wait=true", json=payload) as response:
+                        if response.status in [200, 204]:
+                            result = await response.json()
+                            webhook_message_id = result.get('id')
+                            print(f"✅ Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message_id}")
+                            
+                            # webhook_messageオブジェクトを作成（IDのみ必要）
+                            class FakeMessage:
+                                def __init__(self, id):
+                                    self.id = id
+                            webhook_message = FakeMessage(webhook_message_id)
+                        else:
+                            error_text = await response.text()
+                            print(f"⚠️ Webhook投稿エラー: {response.status} - {error_text}")
                     
             except Exception as webhook_error:
                 print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
