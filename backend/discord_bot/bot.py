@@ -209,15 +209,13 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                                                 "type": 2,  # BUTTON
                                                 "style": 5,  # LINK
                                                 "label": "WEBで参加する",
-                                                "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true",
-                                                "emoji": {"name": "✅"}
+                                                "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true"
                                             },
                                             {
                                                 "type": 2,  # BUTTON
                                                 "style": 5,  # LINK
                                                 "label": "詳細を見る",
-                                                "url": f"https://matcha-gg.com/recruitment/{recruitment_id}",
-                                                "emoji": {"name": "🌐"}
+                                                "url": f"https://matcha-gg.com/recruitment/{recruitment_id}"
                                             }
                                         ]
                                     }
@@ -956,7 +954,7 @@ async def handle_create_embed_notification(data: dict):
         if webhook_url:
             try:
                 async with aiohttp.ClientSession() as session:
-                    # URLリンクボタンをcomponents形式で作成
+                    # URLリンクボタンをcomponents形式で作成（emojiなしでテスト）
                     components = [
                         {
                             "type": 1,  # ACTION_ROW
@@ -965,15 +963,13 @@ async def handle_create_embed_notification(data: dict):
                                     "type": 2,  # BUTTON
                                     "style": 5,  # LINK
                                     "label": "WEBで参加する",
-                                    "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true",
-                                    "emoji": {"name": "✅"}
+                                    "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true"
                                 },
                                 {
                                     "type": 2,  # BUTTON
                                     "style": 5,  # LINK
                                     "label": "詳細を見る",
-                                    "url": f"https://matcha-gg.com/recruitment/{recruitment_id}",
-                                    "emoji": {"name": "🌐"}
+                                    "url": f"https://matcha-gg.com/recruitment/{recruitment_id}"
                                 }
                             ]
                         }
