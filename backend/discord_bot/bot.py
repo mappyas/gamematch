@@ -200,7 +200,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                             if update_response.status == 200:
                                 print(f"✅ 募集を作成しました (ID: {recruitment_id})")
                             else:
-                                print(f"⚠️ メッセージID更新に失敗: {update_response.status}")
+                                print(f"⚠️ error: {update_response.status}")
                     elif response.status == 404:
                         print(f"❌ DB未登録ユーザー")
                         await interaction.followup.send("❌ 先にWEBサイトで登録が必要です。https://matcha-gg.com/", ephemeral=True)
@@ -828,14 +828,14 @@ async def redis_subscriber():
     redis_host = os.environ.get('REDIS_HOST', '127.0.0.1')
     redis_port = int(os.environ.get('REDIS_PORT', 6379))
     
-    print(f"🔌 Redis接続中: {redis_host}:{redis_port}")
+    print(f"🔌 Redisconnecting...: {redis_host}:{redis_port}")
     
     try:
         r = aioredis.Redis(host=redis_host, port=redis_port, decode_responses=True)
         pubsub = r.pubsub()
         await pubsub.subscribe('discord_bot_notifications')
         
-        print("✅ Redis Pub/Sub購読開始: discord_bot_notifications")
+        print("✅ Ready for Redis Pub/Sub: discord_bot_notifications")
         
         async for message in pubsub.listen():
             if message['type'] == 'message':
@@ -851,7 +851,7 @@ async def redis_subscriber():
                     print(f"❌ Redis通知処理エラー: {e}")
                     
     except Exception as e:
-        print(f"❌ Redis接続エラー: {e}")
+        print(f"❌ Redis connect error: {e}")
 
 
 async def handle_create_embed_notification(data: dict):
