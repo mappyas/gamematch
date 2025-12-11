@@ -1,37 +1,12 @@
-[33mcommit d3230bb3b2ab1221c258d72bb3703073766be1b6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
-Author: mappyas <mappyas916@gmail.com>
-Date:   Mon Dec 1 17:52:04 2025 +0900
-
-    Discordbotwebsocket
-
-.gitignore
-Plan/bot_code_explanation.md
-Plan/discord_bot_setup_guide.md
-Plan/env_setup_guide.md
-Plan/implementation_plan.md
-Plan/nextplan.md
-Plan/phase2_implementation_guide.md
-Plan/phase2_step2_serializer_guide.md
-Plan/task.md
-backend/accounts/__pycache__/models.cpython-38.pyc
-backend/accounts/__pycache__/serializers.cpython-38.pyc
-backend/accounts/__pycache__/urls.cpython-38.pyc
-backend/accounts/__pycache__/views.cpython-38.pyc
-backend/accounts/consumers.py
-backend/accounts/migrations/0007_discordrecruitment.py
-backend/accounts/migrations/0008_alter_discordrecruitment_participants.py
-backend/accounts/migrations/0009_discordserversetting.py
-backend/accounts/models.py
-backend/accounts/routing.py
-backend/accounts/serializers.py
-backend/accounts/urls.py
-backend/accounts/views.py
-backend/db.sqlite3
-backend/discord_bot/__init__.py
-backend/discord_bot/bot.py
-backend/project/__pycache__/settings.cpython-38.pyc
-backend/project/asgi.py
-backend/project/settings.py
-backend/requirements.txt
-frontend/src/app/discord-recruitments/page.tsx
-frontend/src/components/DiscordRecruitmentCard.tsx
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]: ⚠ Webhook投稿エラー、通常投稿にフォールバック: 404 Not Found (error code: 10008): Unknown Message
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]: Traceback (most recent call last):
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]:   File "/var/www/gamematch/backend/discord_bot/bot.py", line 906, in handle_create_embed_notification
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]:     discord_message = await channel.fetch_message(webhook_message.id)
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]:                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]:   File "/var/www/gamematch/backend/venv/lib/python3.12/site-packages/discord/abc.py", line 1624, in fetch_message
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]:     data = await self._state.http.get_message(channel.id, id)
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]:            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]:   File "/var/www/gamematch/backend/venv/lib/python3.12/site-packages/discord/http.py", line 741, in request
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]:     raise NotFound(response, data)
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]: discord.errors.NotFound: 404 Not Found (error code: 10008): Unknown Message
+Dec 11 14:17:31 ip-172-26-12-111 python[54845]: ✅ メッセージID保存完了: 1448544203092000943
