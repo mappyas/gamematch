@@ -193,8 +193,6 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         
                         webhook_message = None
                         
-                        webhook_message = None
-                        
                         # Bot作成Webhookで投稿（ユーザー名義 + ボタン）
                         try:
                             # チャンネルの既存Webhookを取得、なければ作成
@@ -220,7 +218,7 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                                         {
                                             "type": 2,  # BUTTON
                                             "style": 5,  # LINK
-                                            "label": "WEBで参加する",
+                                            "label": "参加する",
                                             "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true"
                                         },
                                         {
@@ -477,12 +475,6 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
     if recruitment_id and not is_full:
         join_url = f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true"
         detail_url = f"https://matcha-gg.com/recruitment/{recruitment_id}"
-        
-        # リンクを見やすく表示
-        embed.description = (
-            f"### [✅ WEBですぐ参加する]({join_url})\n"
-            f"[🌐 詳細をWEBで見る]({detail_url})"
-        )
     
     if is_full:
         embed.set_footer(text="この募集は満員です")
