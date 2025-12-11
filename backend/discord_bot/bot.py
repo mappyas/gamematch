@@ -195,21 +195,72 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                         
                         webhook_message = None
                         
-                        # Webhookがあればユーザー名義で投稿（ボタンなし、Embed内にリンクあり）
-                        if self.webhook_url:
-                            try:
-                                webhook = discord.Webhook.from_url(self.webhook_url, session=session)
-                                # ユーザーのアバターURLを取得
-                                avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
-                                webhook_message = await webhook.send(
-                                    embed=embed,
-                                    username=interaction.user.display_name,
-                                    avatar_url=avatar_url,
-                                    wait=True
-                                )
-                                print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
-                            except Exception as webhook_error:
-                                print(f"⚠️ Webhook投稿エラー: {webhook_error}")
+                        # Bot作成Webhookで投稿（ユーザー名義 + ボタン）
+                        try:
+                            # チャンネルの既存Webhookを取得、なければ作成
+                            webhooks = await interaction.channel.webhooks()
+                            matcha_webhook = None
+                            for wh in webhooks:
+                                if wh.name == "Matcha募集" and wh.user == bot.user:
+                                    matcha_webhook = wh
+                                    break
+                            
+                            if not matcha_webhook:
+                                matcha_webhook = await interaction.channel.create_webhook(name="Matcha募集")
+                                print(f"✅ 新規Webhook作成: {matcha_webhook.id}")
+                            
+                            # ユーザーのアバターURLを取得
+                            avatar_url = interaction.user.avatar.url if interaction.user.avatar else None
+
+                            # URLリンクボタンをcomponents形式で作成
+                            components = [
+                                {
+                                    "type": 1,  # ACTION_ROW
+                                    "components": [
+                                        {
+                                            "type": 2,  # BUTTON
+                                            "style": 5,  # LINK
+                                            "label": "WEBで参加する",
+                                            "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true"
+                                        },
+                                        {
+                                            "type": 2,  # BUTTON
+                                            "style": 5,  # LINK
+                                            "label": "詳細を見る",
+                                            "url": f"https://matcha-gg.com/recruitment/{recruitment_id}"
+                                        }
+                                    ]
+                                }
+                            ]
+
+                            # discord.pyのwebhookは時々username引数を無視するため、raw requestを使用
+                            payload = {
+                                "username": interaction.user.display_name,
+                                "embeds": [embed.to_dict()],
+                                "components": components
+                            }
+                            if avatar_url:
+                                payload["avatar_url"] = avatar_url
+                                
+                            async with session.post(f"{matcha_webhook.url}?wait=true", json=payload) as wh_response:
+                                if wh_response.status in [200, 204]:
+                                    wh_result = await wh_response.json()
+                                    
+                                    # ダミーのメッセージオブジェクトを作成（IDを持つ）
+                                    class WebhookMsg:
+                                        def __init__(self, id):
+                                            self.id = id
+                                    
+                                    webhook_message = WebhookMsg(wh_result.get('id'))
+                                    print(f"✅ Bot作成Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
+                                else:
+                                    wh_text = await wh_response.text()
+                                    print(f"⚠️ Webhook raw投稿エラー: {wh_response.status} - {wh_text}")
+                                    
+                        except Exception as webhook_error:
+                            print(f"⚠️ Webhook投稿エラー: {webhook_error}")
+                            import traceback
+                            traceback.print_exc()
                         
                         # Webhookがない場合は通常投稿（Bot名義）
                         if not webhook_message:
@@ -926,24 +977,71 @@ async def handle_create_embed_notification(data: dict):
             print(f"❌ チャンネルが見つかりません: {channel_id}")
             return
         
-        # Webhook経由で投稿（ユーザー名義、ボタンなし）
-        if webhook_url:
-            try:
-                # view=None にすることで通常のWebhookとして送信（ユーザー名義が正常に機能する）
-                async with aiohttp.ClientSession() as session:
-                    webhook = discord.Webhook.from_url(webhook_url, session=session)
-                    webhook_message = await webhook.send(
-                        embed=embed,
-                        username=owner_username,
-                        avatar_url=owner_avatar if owner_avatar else None,
-                        wait=True
-                    )
-                print(f"✅ Webhook経由でEmbed投稿（ユーザー名義）: message_id={webhook_message.id}")
+        
+        # Bot作成Webhookで投稿（ユーザー名義 + ボタン）
+        try:
+            # チャンネルの既存Webhookを取得、なければ作成
+            webhooks = await channel.webhooks()
+            matcha_webhook = None
+            for wh in webhooks:
+                if wh.name == "Matcha募集" and wh.user == bot.user:
+                    matcha_webhook = wh
+                    break
+            
+            if not matcha_webhook:
+                matcha_webhook = await channel.create_webhook(name="Matcha募集")
+                print(f"✅ 新規Webhook作成: {matcha_webhook.id}")
+            
+            # URLリンクボタンをcomponents形式で作成
+            components = [
+                {
+                    "type": 1,  # ACTION_ROW
+                    "components": [
+                        {
+                            "type": 2,  # BUTTON
+                            "style": 5,  # LINK
+                            "label": "WEBで参加する",
+                            "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true"
+                        },
+                        {
+                            "type": 2,  # BUTTON
+                            "style": 5,  # LINK
+                            "label": "詳細を見る",
+                            "url": f"https://matcha-gg.com/recruitment/{recruitment_id}"
+                        }
+                    ]
+                }
+            ]
+
+            # discord.pyのwebhookは時々username引数を無視することがあるため、raw requestを使用
+            async with aiohttp.ClientSession() as session:
+                payload = {
+                    "username": owner_username,
+                    "embeds": [embed.to_dict()],
+                    "components": components # ボタンを含める
+                }
+                if owner_avatar:
+                    payload["avatar_url"] = owner_avatar
                     
-            except Exception as webhook_error:
-                print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
-                import traceback
-                traceback.print_exc()
+                async with session.post(f"{matcha_webhook.url}?wait=true", json=payload) as response:
+                    if response.status in [200, 204]:
+                        result = await response.json()
+                        
+                        # ダミーのメッセージオブジェクトを作成（IDを持つ）
+                        class WebhookMsg:
+                            def __init__(self, id):
+                                self.id = id
+                        
+                        webhook_message = WebhookMsg(result.get('id'))
+                        print(f"✅ Bot作成Webhook経由でEmbed+ボタン投稿（ユーザー名義）: message_id={webhook_message.id}")
+                    else:
+                        text = await response.text()
+                        print(f"⚠️ Webhook raw投稿エラー: {response.status} - {text}")
+                
+        except Exception as webhook_error:
+            print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
+            import traceback
+            traceback.print_exc()
         
         # Webhookがない、または失敗した場合は通常投稿（Bot名義でEmbed+ボタン）
         # ※ Embed内にリンクがあるのでBot名義の場合もViewは不要かもしれないが、念のため残すか迷うところ。
