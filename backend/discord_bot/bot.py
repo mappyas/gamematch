@@ -928,6 +928,8 @@ async def redis_subscriber():
                         await handle_create_embed_notification(data)
                     elif data.get('type') == 'update_embed':
                         await handle_update_embed_notification(data)
+                    elif data.get('type') == 'recruitment_full':
+                        await handle_recruitment_full_notification(data)
                         
                 except Exception as e:
                     print(f"❌ Redis通知処理エラー: {e}")
@@ -1097,6 +1099,31 @@ async def handle_update_embed_notification(data: dict):
         
     except Exception as e:
         print(f"❌ Embed更新エラー: {e}")
+
+
+async def handle_recruitment_full_notification(data: dict):
+    """満員通知処理（VC招待送信）"""
+    try:
+        recruitment_id = data.get('recruitment_id')
+        print(f"✅ 満員通知受信: recruitment_id={recruitment_id}")
+        
+        # 最新の募集データを取得
+        async with aiohttp.ClientSession() as session:
+            url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/"
+            async with session.get(url) as response:
+                if response.status != 200:
+                    print(f"❌ 募集データ取得エラー: {response.status}")
+                    return
+                result = await response.json()
+                recruitment_data = result['recruitment']
+        
+        # VC招待ロジックを実行
+        await check_and_send_vc_invite(recruitment_data)
+        
+    except Exception as e:
+        print(f"❌ 満員通知処理エラー: {e}")
+        import traceback
+        traceback.print_exc()
 
 @bot.event
 async def on_ready():
