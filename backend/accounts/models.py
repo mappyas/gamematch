@@ -445,6 +445,8 @@ class DiscordServerSetting(models.Model):
     
     voice_category_id = models.CharField(max_length=30, blank=True) # ボイスチャンネルカテゴリーID
     available_voice_channels = models.TextField(default='[]') # 使用可能なボイスチャンネル
+    recruitment_channel_id = models.CharField(max_length=30, blank=True, help_text='フロントからの募集投稿先チャンネル') # 募集投稿先チャンネルID
+    webhook_url = models.URLField(max_length=500, blank=True, help_text='Discord Webhook URL') # Webhook URL
     created_at = models.DateTimeField(auto_now_add=True) # 作成日時
     updated_at = models.DateTimeField(auto_now=True) # 更新日時
     
