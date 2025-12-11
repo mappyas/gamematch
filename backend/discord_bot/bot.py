@@ -406,31 +406,8 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
 
 
 # ============================================
-# スラッシュコマンド
+# スラッシュコマンド（on_readyは末尾のRedis版を使用）
 # ============================================
-
-@bot.event
-async def on_ready():
-    """Botが起動したときに実行"""
-    print(f'✅ Botが起動しました: {bot.user.name}')
-    print(f'Bot ID: {bot.user.id}')
-    print('------')
-    
-    if not hasattr(bot, 'startup_completed'):
-        await fetch_startup_data()
-        bot.startup_completed = True
-        print("Startup data fetched successfully")
-
-    try:
-        synced = await bot.tree.sync()
-        print(f'✅ {len(synced)} 個のコマンドを同期しました')
-    except Exception as e:
-        print(f'❌ コマンド同期エラー: {e}')
-    
-    if not cleanup_closed_vcs.is_running():
-        cleanup_closed_vcs.start()
-        print("🔄 VCクリーンアップタスクを開始しました")
-
 
 @bot.tree.command(name="setup", description="このサーバーで使用するゲームを設定します（管理者用）")
 async def setup(interaction: discord.Interaction):
@@ -839,6 +816,141 @@ async def send_rating_dm(user: discord.User, other_participants: list, recruitme
         print(f"❌ 評価DM送信エラー: {e}")
 
 
+# ============================================
+# Redis Pub/Sub: バックエンドからの通知受信
+# ============================================
+
+async def redis_subscriber():
+    """Redis Pub/Subでバックエンドからの通知を受信"""
+    import redis.asyncio as aioredis
+    import os
+    
+    redis_host = os.environ.get('REDIS_HOST', '127.0.0.1')
+    redis_port = int(os.environ.get('REDIS_PORT', 6379))
+    
+    print(f"🔌 Redis接続中: {redis_host}:{redis_port}")
+    
+    try:
+        r = aioredis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+        pubsub = r.pubsub()
+        await pubsub.subscribe('discord_bot_notifications')
+        
+        print("✅ Redis Pub/Sub購読開始: discord_bot_notifications")
+        
+        async for message in pubsub.listen():
+            if message['type'] == 'message':
+                try:
+                    import json
+                    data = json.loads(message['data'])
+                    print(f"📨 Redis通知受信: {data.get('type')}")
+                    
+                    if data.get('type') == 'create_embed':
+                        await handle_create_embed_notification(data)
+                        
+                except Exception as e:
+                    print(f"❌ Redis通知処理エラー: {e}")
+                    
+    except Exception as e:
+        print(f"❌ Redis接続エラー: {e}")
+
+
+async def handle_create_embed_notification(data: dict):
+    """フロントエンドからの募集作成通知を処理"""
+    try:
+        recruitment_id = data.get('recruitment_id')
+        webhook_url = data.get('webhook_url')
+        channel_id = data.get('channel_id')
+        owner_avatar = data.get('owner_avatar')
+        owner_username = data.get('owner_username')
+        
+        print(f"🔧 Embed作成処理開始: recruitment_id={recruitment_id}")
+        
+        # バックエンドから募集詳細を取得
+        async with aiohttp.ClientSession() as session:
+            url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/"
+            async with session.get(url) as response:
+                if response.status != 200:
+                    print(f"❌ 募集詳細取得エラー: {response.status}")
+                    return
+                result = await response.json()
+                recruitment_data = result['recruitment']
+        
+        game_name = recruitment_data.get('game_name', '')
+        embed = create_recruitment_embed(recruitment_data, game_name)
+        view = RecruitmentView(recruitment_id, recruitment_data.get('max_slots', 4), is_full=False)
+        
+        message = None
+        
+        # Webhook経由で投稿（ユーザー名義）
+        if webhook_url:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    webhook = discord.Webhook.from_url(webhook_url, session=session)
+                    message = await webhook.send(
+                        embed=embed,
+                        view=view,
+                        username=owner_username,
+                        avatar_url=owner_avatar if owner_avatar else None,
+                        wait=True
+                    )
+                    print(f"✅ Webhook経由でEmbed投稿: message_id={message.id}")
+            except Exception as webhook_error:
+                print(f"⚠️ Webhook投稿エラー、通常投稿にフォールバック: {webhook_error}")
+        
+        # Webhookがない、または失敗した場合は通常投稿
+        if not message and channel_id:
+            channel = bot.get_channel(int(channel_id))
+            if channel:
+                message = await channel.send(embed=embed, view=view)
+                print(f"✅ 通常投稿でEmbed送信: message_id={message.id}")
+            else:
+                print(f"❌ チャンネルが見つかりません: {channel_id}")
+                return
+        
+        # メッセージIDをバックエンドに保存
+        if message:
+            async with aiohttp.ClientSession() as session:
+                update_url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/update/"
+                update_data = {'discord_message_id': str(message.id)}
+                async with session.post(update_url, json=update_data) as update_response:
+                    if update_response.status == 200:
+                        print(f"✅ メッセージID保存完了: {message.id}")
+                    else:
+                        print(f"⚠️ メッセージID保存エラー: {update_response.status}")
+                        
+    except Exception as e:
+        print(f"❌ Embed作成処理エラー: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+@bot.event
+async def on_ready():
+    """Botが起動したときに実行（Redis subscriberを追加）"""
+    print(f'✅ Botが起動しました: {bot.user.name}')
+    print(f'Bot ID: {bot.user.id}')
+    print('------')
+    
+    if not hasattr(bot, 'startup_completed'):
+        await fetch_startup_data()
+        bot.startup_completed = True
+        print("Startup data fetched successfully")
+        
+        # Redis subscriberをバックグラウンドで開始
+        asyncio.create_task(redis_subscriber())
+        print("🔄 Redis subscriberを開始しました")
+
+    try:
+        synced = await bot.tree.sync()
+        print(f'✅ {len(synced)} 個のコマンドを同期しました')
+    except Exception as e:
+        print(f'❌ コマンド同期エラー: {e}')
+    
+    if not cleanup_closed_vcs.is_running():
+        cleanup_closed_vcs.start()
+        print("🔄 VCクリーンアップタスクを開始しました")
+
+
 def main():
     """メイン関数: Botを起動"""
     if not DISCORD_BOT_TOKEN:
@@ -849,6 +961,7 @@ def main():
     print("🚀 Discord Botを起動中...")
     print("📝 Phase 1: VC管理機能が有効です")
     print("📝 Phase 4: ユーザ評価システムが有効です")
+    print("📝 Redis Pub/Sub: フロントエンド連携が有効です")
     try:
         bot.run(DISCORD_BOT_TOKEN)
     except Exception as e:

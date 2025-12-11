@@ -20,21 +20,24 @@ export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSecti
         switch (myRecruitment.status) {
             case 'ongoing':
                 return {
-                    text: '🎮 マッチ中',
-                    color: 'text-[#fafad2]',
-                    borderColor: 'border-[#fafad2]',
+                    text: 'IN MATCH',
+                    color: 'text-[#e0e0e0]',
+                    bg: 'bg-[var(--gaming-bg-panel)]',
+                    borderColor: 'border-[var(--gaming-accent-sub)]',
                 };
             case 'open':
                 return {
-                    text: '📢 募集中',
-                    color: 'text-[#78A55A]',
-                    borderColor: 'border-[#78A55A]',
+                    text: 'RECRUITING',
+                    color: 'text-[var(--gaming-accent)]',
+                    bg: 'bg-[var(--gaming-bg-panel)]',
+                    borderColor: 'border-[var(--gaming-accent)]',
                 };
             default:
                 return {
-                    text: '終了',
-                    color: 'text-gray-400',
-                    borderColor: 'border-gray-400',
+                    text: 'CLOSED',
+                    color: 'text-gray-500',
+                    bg: 'bg-gray-800',
+                    borderColor: 'border-gray-600',
                 };
         }
     }
@@ -55,6 +58,8 @@ export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSecti
 
             })
             const data = await res.json();
+            // リロードして反映（本来は状態管理すべきだが簡易実装）
+            window.location.reload();
         } catch (error) {
             console.error(error);
         }
@@ -62,113 +67,83 @@ export function CurrentGameSection({ myRecruitment, userdata }: CurrentGameSecti
 
     const statusDisplay = getStatusDisplay();
     return (
-        <div className="mt-4 mb-4 animate-slideUp relative">
-            {/* 巻物背景 (不透明度調整のため分離) */}
-            <div
-                className="absolute inset-0 z-0"
-                style={{
-                    backgroundImage: `url('/scroll.png')`,
-                    backgroundSize: '100% 100%',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundColor: 'rgba(0, 255, 255, 0.5)',
-                    // 上下左右フェード
-                    maskImage: 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent), linear-gradient(to right, transparent, black 2%, black 98%, transparent)',
-                    WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 10%, black 90%, transparent), linear-gradient(to right, transparent, black 2%, black 98%, transparent)',
-                    maskComposite: 'intersect',
-                    WebkitMaskComposite: 'source-in',
-                    opacity: 0.85, // 若干薄く
-                }}
-            />
+        <div className="mt-4 mb-8 animate-slideUp">
+            {/* ゲーミングパネル */}
+            <div className="gaming-panel relative overflow-hidden bg-[#15171e]/90 backdrop-blur-sm p-6 sm:p-8">
+                {/* 装飾: 上部のライン */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[var(--gaming-accent)] to-transparent opacity-50" />
 
-            {/* コンテンツ */}
-            <div
-                className="relative z-10 w-full p-6 sm:p-8 md:p-10 min-h-[250px] sm:min-h-[300px] md:min-h-[350px] flex flex-col justify-center"
-            >
-                {/* コンテンツを巻物の中央に配置 */}
-                <div className="relative max-w-[75%] sm:max-w-[70%] mx-auto py-4 sm:py-6">
-                    {/* ステータスバッジ */}
-                    <div className="flex justify-center items-center gap-2 sm:gap-4 mb-4">
-                        <img
-                            src={myRecruitment.icon}
-                            alt=""
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-[#78A55A]"
-                        />
-
-                        <span className={`${statusDisplay.color} font-bold text-base sm:text-xl px-2 sm:px-3 py-1 bg-[#f9f3e3] rounded-full border border-[#8b7340]`}>
-                            {statusDisplay.text}
-                        </span>
-                        {myRecruitment.status === 'ongoing' && (
-                            <span className="text-[#5a4a20] text-xs sm:text-sm hidden sm:inline">
-                                マッチ中
+                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                    {/* 左側: ステータスとタイトル */}
+                    <div className="flex-1 space-y-4 w-full">
+                        <div className="flex items-center gap-3">
+                            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${statusDisplay.color} ${statusDisplay.borderColor} ${statusDisplay.bg} bg-opacity-10 tracking-wider shadow-[0_0_10px_rgba(0,0,0,0.2)]`}>
+                                {statusDisplay.text}
                             </span>
-                        )}
+                            <img
+                                src={myRecruitment.icon}
+                                alt=""
+                                className="w-6 h-6 rounded-full opacity-80"
+                            />
+                        </div>
+
+                        <div>
+                            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-wide mb-1">
+                                {myRecruitment.title}
+                            </h2>
+                            <div className="flex items-center gap-2 text-sm text-[var(--gaming-text-sub)]">
+                                <span className="uppercase tracking-wider text-[10px] border border-[var(--gaming-border)] px-1 rounded">Rank</span>
+                                <span className="text-[var(--gaming-accent-sub)] font-medium">{myRecruitment.rank || 'Any'}</span>
+                            </div>
+                        </div>
                     </div>
 
-
-                    {/* 参加者アイコン - 横スクロール対応 */}
-                    <div className="overflow-x-auto scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0">
-                        <div className="flex items-center gap-4 sm:gap-8 justify-start sm:justify-center min-w-max">
+                    {/* 右側: 参加者リスト */}
+                    <div className="flex-shrink-0 w-full md:w-auto">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-start md:justify-end">
                             {/* 募集者 */}
-                            <div className="flex flex-col items-center group flex-shrink-0">
-                                <div className="w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center border-4 border-[#78A55A] shadow-lg transition-transform group-hover:scale-110">
+                            <div className="relative group" title={`Owner: ${myRecruitment.discord_owner_username}`}>
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[var(--gaming-accent)] p-0.5 shadow-[0_0_10px_rgba(0,255,136,0.3)]">
                                     <img
                                         src={myRecruitment.discord_owner_avatar || DEFAULT_AVATAR}
                                         alt={myRecruitment.discord_owner_username}
-                                        className="w-14 h-14 sm:w-24 sm:h-24 rounded-full"
+                                        className="w-full h-full rounded-full object-cover"
                                     />
                                 </div>
-                                <span className="text-xs sm:text-sm mt-2 sm:mt-3 text-[#2a2a1a] font-medium max-w-[60px] sm:max-w-none truncate">{myRecruitment.discord_owner_username}</span>
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[var(--gaming-accent)] rounded-full border-2 border-[#15171e] flex items-center justify-center">
+                                    <span className="text-[8px] font-bold text-black">C</span>
+                                </div>
                             </div>
 
                             {/* 参加者 */}
-                            {myRecruitment.participants_list.map((p, idx) => (
-                                <div key={p.discord_user_id} className="flex flex-col items-center group flex-shrink-0">
-                                    <div className={`w-14 h-14 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br ${idx % 3 === 0 ? '' :
-                                        idx % 3 === 1 ? 'from-purple-400 to-pink-500' :
-                                            'from-green-400 to-teal-500'
-                                        } flex items-center justify-center border-4 border-[#78A55A] shadow-lg transition-transform group-hover:scale-110`}>
+                            {myRecruitment.participants_list.map((p) => (
+                                <div key={p.discord_user_id} className="relative group" title={p.discord_username}>
+                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-[var(--gaming-border)] p-0.5 bg-[#1a1c24]">
                                         <img
                                             src={p.avatar || DEFAULT_AVATAR}
                                             alt={p.discord_username}
-                                            className="w-14 h-14 sm:w-24 sm:h-24 rounded-full"
+                                            className="w-full h-full rounded-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
                                         />
                                     </div>
-                                    <span className="text-xs sm:text-sm mt-2 sm:mt-3 text-[#2a2a1a] font-medium max-w-[60px] sm:max-w-none truncate">{p.discord_username}</span>
                                 </div>
                             ))}
 
-                            {/* 空きスロット - 墨絵風 */}
+                            {/* 空きスロット */}
                             {Array.from({ length: myRecruitment.max_slots - myRecruitment.current_slots }).map((_, i) => (
-                                <div key={`empty-${i}`} className="flex flex-col items-center flex-shrink-0">
-                                    <div className="empty-slot w-12 h-12 sm:w-20 sm:h-20">
-                                        <span className="text-2xl sm:text-4xl">?</span>
-                                    </div>
-                                    <span className="text-xs sm:text-sm mt-2 sm:mt-3 text-[#6a6a6a]">空き</span>
+                                <div key={`empty-${i}`} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-[var(--gaming-border)] border-dashed flex items-center justify-center bg-[#1a1c24]/50">
+                                    <div className="w-2 h-2 rounded-full bg-[var(--gaming-border)]"></div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* 募集情報 + 退出ボタン */}
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-4 pt-4 border-t border-[#8b7340]/50">
-                        <div className="text-[#2a2a1a] text-sm sm:text-lg font-semibold space-y-1 sm:space-y-0">
-                            <div>
-                                <span className="text-[#5a4a20]">タイトル: </span>
-                                <span className="text-[#1a1a1a] font-bold">{myRecruitment.title}</span>
-                            </div>
-                            <div>
-                                <span className="text-[#5a4a20]">ランク: </span>
-                                <span className="text-[#d35339] font-bold">{myRecruitment.rank || '指定なし'}</span>
-                            </div>
-                        </div>
-
-                        {/* 提灯スタイル退出ボタン */}
+                    {/* 退出ボタン (モバイルでは下部、デスクトップでは右端) */}
+                    <div className="md:ml-4 flex-shrink-0 w-full md:w-auto mt-2 md:mt-0">
                         <button
                             onClick={exitGame}
-                            className="lantern-button px-6 py-3 text-sm font-bold whitespace-nowrap flex-shrink-0"
+                            className="w-full md:w-auto px-4 py-2 rounded border border-red-900/50 text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors text-xs uppercase tracking-widest font-bold"
                         >
-                            🏮 退出
+                            Lose
                         </button>
                     </div>
                 </div>

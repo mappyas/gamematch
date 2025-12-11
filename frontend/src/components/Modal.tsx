@@ -19,7 +19,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
       onClick={onClose}
     >
       <div
-        className={`bg-gradient-to-br from-[#12121a] to-[#0a0a0f] border border-white/10 rounded-2xl p-8 ${maxWidth} w-full max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200`}
+        className={`bg-gradient-to-br from-[#12121a] to-[#0a0a0f] border border-white/10 rounded-2xl p-8 ${maxWidth} w-full max-h-[90vh] overflow-y-auto animate-fadeInScale`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ヘッダー（titleがある場合 or 閉じるボタンのみ） */}

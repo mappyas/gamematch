@@ -16,10 +16,10 @@ export function RecruitmentDetailModal({ isOpen, onClose, recruitment }: Recruit
     if (!recruitment) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="募集詳細">
+        <Modal isOpen={isOpen} onClose={onClose} title="Recruitment Details">
             <div className="space-y-4">
                 {/* ゲーム情報 */}
-                <div className="flex items-center gap-3 pb-3 border-b border-white/10">
+                <div className="flex items-center gap-3 pb-3 border-b border-[var(--gaming-border)]">
                     <img
                         src={recruitment.icon}
                         alt={recruitment.game_name}
@@ -32,49 +32,49 @@ export function RecruitmentDetailModal({ isOpen, onClose, recruitment }: Recruit
 
                 {/* 募集タイトル */}
                 <div>
-                    <div className="text-xs text-gray-500 mb-1">募集タイトル</div>
+                    <div className="text-xs text-[var(--gaming-text-sub)] mb-1 uppercase tracking-wider">Title</div>
                     <div className="text-white font-medium">{recruitment.title}</div>
                 </div>
 
                 {/* 募集ランク */}
                 <div>
-                    <div className="text-xs text-gray-500 mb-1">募集ランク</div>
-                    <div className="text-purple-400 font-medium">{recruitment.rank || '指定なし'}</div>
+                    <div className="text-xs text-[var(--gaming-text-sub)] mb-1 uppercase tracking-wider">Rank</div>
+                    <div className="text-[var(--gaming-accent-sub)] font-medium">{recruitment.rank || 'Any'}</div>
                 </div>
 
                 {/* 参加状況 */}
                 <div>
-                    <div className="text-xs text-gray-500 mb-1">参加状況</div>
-                    <div className={`font-bold ${recruitment.is_full ? 'text-red-400' : 'text-cyan-400'}`}>
-                        {recruitment.current_slots} / {recruitment.max_slots}人
+                    <div className="text-xs text-[var(--gaming-text-sub)] mb-1 uppercase tracking-wider">Slots</div>
+                    <div className={`font-bold ${recruitment.is_full ? 'text-red-400' : 'text-[var(--gaming-accent)]'}`}>
+                        {recruitment.current_slots} / {recruitment.max_slots}
                     </div>
                 </div>
 
                 {/* ステータス */}
                 <div>
-                    <div className="text-xs text-gray-500 mb-1">ステータス</div>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${recruitment.status === 'open' ? 'bg-green-500/20 text-green-400' :
-                        recruitment.status === 'ongoing' ? 'bg-cyan-500/20 text-cyan-400' :
+                    <div className="text-xs text-[var(--gaming-text-sub)] mb-1 uppercase tracking-wider">Status</div>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${recruitment.status === 'open' ? 'bg-[var(--gaming-accent)]/10 text-[var(--gaming-accent)] border border-[var(--gaming-accent)]' :
+                        recruitment.status === 'ongoing' ? 'bg-[var(--gaming-accent-sub)]/10 text-[var(--gaming-accent-sub)] border border-[var(--gaming-accent-sub)]' :
                             recruitment.status === 'closed' ? 'bg-gray-500/20 text-gray-400' :
                                 'bg-red-500/20 text-red-400'
                         }`}>
-                        {recruitment.status === 'open' ? '募集中' :
-                            recruitment.status === 'ongoing' ? '進行中' :
-                                recruitment.status === 'closed' ? '終了' : 'キャンセル'}
+                        {recruitment.status === 'open' ? 'RECRUITING' :
+                            recruitment.status === 'ongoing' ? 'IN MATCH' :
+                                recruitment.status === 'closed' ? 'CLOSED' : 'CANCELLED'}
                     </span>
                 </div>
 
                 {/* 募集者 */}
-                <div className="pt-3 border-t border-white/10">
-                    <div className="text-xs text-gray-500 mb-2">募集者</div>
+                <div className="pt-3 border-t border-[var(--gaming-border)]">
+                    <div className="text-xs text-[var(--gaming-text-sub)] mb-2 uppercase tracking-wider">Owner</div>
                     <div className="flex items-center gap-2">
                         <img
                             src={recruitment.discord_owner_avatar || DEFAULT_AVATAR}
                             alt={recruitment.discord_owner_username}
-                            className="w-8 h-8 rounded-full"
+                            className="w-8 h-8 rounded-full border border-[var(--gaming-border)]"
                         />
                         <Link href={`/profile/${recruitment.discord_owner_id}`}>
-                            <span className="text-white font-medium">{recruitment.discord_owner_username}</span>
+                            <span className="text-white font-medium hover:text-[var(--gaming-accent)] transition-colors">{recruitment.discord_owner_username}</span>
                         </Link>
                     </div>
                 </div>
@@ -82,17 +82,17 @@ export function RecruitmentDetailModal({ isOpen, onClose, recruitment }: Recruit
                 {/* 参加者リスト */}
                 {recruitment.participants_list.length > 0 && (
                     <div>
-                        <div className="text-xs text-gray-500 mb-2">参加者</div>
+                        <div className="text-xs text-[var(--gaming-text-sub)] mb-2 uppercase tracking-wider">Participants</div>
                         <div className="flex flex-wrap gap-2">
                             {recruitment.participants_list.map((participant) => (
-                                <div key={participant.discord_user_id} className="flex items-center gap-2 bg-white/5 rounded-lg px-2 py-1">
+                                <div key={participant.discord_user_id} className="flex items-center gap-2 bg-[#1a1c24] rounded-lg px-2 py-1 border border-[var(--gaming-border)]">
                                     <img
                                         src={participant.avatar || DEFAULT_AVATAR}
                                         alt={participant.discord_username}
                                         className="w-6 h-6 rounded-full"
                                     />
                                     <Link href={`/profile/${participant.discord_user_id}`}>
-                                        <span className="text-sm text-gray-300 hover:text-cyan-400">
+                                        <span className="text-sm text-[var(--gaming-text-sub)] hover:text-[var(--gaming-accent)] transition-colors">
                                             {participant.discord_username}
                                         </span>
                                     </Link>

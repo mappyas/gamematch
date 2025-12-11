@@ -128,14 +128,10 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
             <Navbar games={games} selectedGame={selectedGame} onGameSelect={setSelectedGame} />
 
             <main className="relative z-10 pt-28 pb-12">
-                {/* 現在参加中のゲームバナー - 全幅表示のためコンテナの外へ */}
-                {myRecruitment && user && (
-                    <div className="w-full mb-8">
-                        <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />
-                    </div>
-                )}
-
                 <div className="max-w-6xl mx-auto px-4">
+                    {/* 現在参加中のゲームバナー */}
+                    {myRecruitment && user && <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />}
+
                     {/* ゲームトップ画像エリア */}
                     {/* <GameImageSection
                         key={`game-image-${selectedGame?.id}`}

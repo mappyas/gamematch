@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     Account, Profile, Game, GameAccount, Recruitment, Participant, 
-    GameRank, RiotAccount, LoLRank,
+    GameRank, RiotAccount, LoLRank, DiscordServerSetting,
     VoiceChannelParticipation, UserRating, DiscordRecruitment
 )
 
@@ -110,3 +110,14 @@ class UserRatingAdmin(admin.ModelAdmin):
     search_fields = ['rater_discord_username', 'rated_discord_username']
     ordering = ['-created_at']
     readonly_fields = ['created_at']
+
+@admin.register(DiscordServerSetting)
+class DiscordServerSettingAdmin(admin.ModelAdmin):
+    list_display = ['discord_server_name', 'game', 'discord_server_id', 'recruitment_channel_id', 'default_max_slots']
+    list_filter = ['game']
+    search_fields = ['discord_server_name', 'discord_server_id']
+    fieldsets = (
+        ('サーバー情報', {'fields': ('discord_server_id', 'discord_server_name', 'game')}),
+        ('募集設定', {'fields': ('recruitment_channel_id', 'webhook_url', 'default_max_slots')}),
+        ('VC設定', {'fields': ('voice_category_id', 'available_voice_channels')}),
+    )

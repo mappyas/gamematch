@@ -5,14 +5,14 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login
 import json
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .serializers import VoiceChannelParticipationSerializer, UserRatingSerializer
 from django.utils import timezone
-
+from rest_framework.permissions import AllowAny
 from .models import Account, Profile, Game, Recruitment, Participant, GameRank, RiotAccount, LoLRank, DiscordRecruitment, DiscordServerSetting,VoiceChannelParticipation, UserRating, DiscordRecruitment
 
 # Discord OAuth2 設定
@@ -496,10 +496,11 @@ def discord_callback(request):
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
-
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
 def discord_create_recruitment(request):
-
+    """Discord募集を作成（BotまたはフロントエンドからのAPI）"""
     try:
         data = json.loads(request.body)
         
@@ -509,7 +510,9 @@ def discord_create_recruitment(request):
             return JsonResponse({'error': 'discord_owner_idは必須です'}, status=400)
         
         # Discord IDがAccountモデルに登録されているか確認
-        if not Account.objects.filter(discord_id=discord_owner_id).exists():
+        try:
+            owner_account = Account.objects.get(discord_id=discord_owner_id)
+        except Account.DoesNotExist:
             return JsonResponse({'error': 'このDiscord IDは登録されていません。先にサイトでDiscordログインしてください。'}, status=404)
         
         existing_recruitment = DiscordRecruitment.objects.filter(
@@ -526,41 +529,93 @@ def discord_create_recruitment(request):
             if any(p['discord_user_id'] == discord_owner_id for p in participants_list):
                 return JsonResponse({'error': '他の募集に参加中です。'}, status=400)
 
-        required_fields = ['game', 'discord_channel_id', 'discord_server_id', 
-                          'discord_owner_id', 'discord_owner_username', 'title', 'rank', 'max_slots']
-        for field in required_fields:
-            if not data.get(field):
-                return JsonResponse({'error': f'{field}は必須です'}, status=400)
-
+        # ゲームIDは必須
+        game_id = data.get('game')
+        if not game_id:
+            return JsonResponse({'error': 'gameは必須です'}, status=400)
+        
         try:
-            game = Game.objects.get(id=data['game'], is_active=True)
+            game = Game.objects.get(id=game_id, is_active=True)
         except Game.DoesNotExist:
             return JsonResponse({'error': 'ゲームが見つかりません'}, status=400)
+
+        # server_id, channel_idを取得（Botからの場合はリクエストから、フロントからの場合はDBから）
+        discord_server_id = data.get('discord_server_id')
+        discord_channel_id = data.get('discord_channel_id')
+        
+        # フロントエンドからの場合（server_idとchannel_idがない場合）
+        source = 'bot'  # デフォルトはBot
+        server_setting = None
+        if not discord_server_id or not discord_channel_id:
+            # DiscordServerSettingからゲームに紐づくサーバー設定を取得
+            server_setting = DiscordServerSetting.objects.filter(game=game).first()
+            if not server_setting:
+                return JsonResponse({'error': 'このゲームのサーバー設定がありません。管理者に連絡してください。'}, status=400)
+            if not server_setting.recruitment_channel_id:
+                return JsonResponse({'error': 'このゲームの募集チャンネルが設定されていません。管理者に連絡してください。'}, status=400)
+            
+            discord_server_id = server_setting.discord_server_id
+            discord_channel_id = server_setting.recruitment_channel_id
+            source = 'frontend'  # フロントエンドからのリクエスト
+        
+        # 必須フィールドのチェック
+        discord_owner_username = data.get('discord_owner_username', owner_account.discord_username)
+        title = data.get('title')
+        rank = data.get('rank', '')
+        max_slots = data.get('max_slots', 4)
+        
+        if not title:
+            return JsonResponse({'error': 'titleは必須です'}, status=400)
             
         recruitment = DiscordRecruitment.objects.create(
             game = game,
-            discord_channel_id = data['discord_channel_id'],
-            discord_server_id=data['discord_server_id'],
-            discord_owner_id=data['discord_owner_id'],
-            discord_owner_username=data['discord_owner_username'],
-            title=data['title'],
-            rank=data.get('rank', ''),
-            max_slots=data.get('max_slots', 4),
-            current_slots=1,  # 募集者（自分）を含む
+            discord_channel_id = discord_channel_id,
+            discord_server_id = discord_server_id,
+            discord_owner_id = discord_owner_id,
+            discord_owner_username = discord_owner_username,
+            title = title,
+            rank = rank,
+            max_slots = max_slots,
+            current_slots = 1,  # 募集者（自分）を含む
         )
         from .serializers import DiscordRecruitmentSerializer
         serializer = DiscordRecruitmentSerializer(recruitment)
 
-        # WebSocket通知を送信
+        # WebSocket通知を送信（フロントエンド向け）
         try:
             from .consumers import sync_notify_recruitment_update
             sync_notify_recruitment_update(serializer.data, 'recruitment_created')
         except Exception as ws_error:
             print(f"WebSocket通知エラー: {ws_error}")
+        
+        # フロントエンドからの場合、Redis経由でBotにEmbed作成を通知
+        if source == 'frontend' and server_setting:
+            try:
+                import redis
+                import os
+                redis_host = os.environ.get('REDIS_HOST', '127.0.0.1')
+                redis_port = int(os.environ.get('REDIS_PORT', 6379))
+                r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+                
+                # Botに送信するデータ
+                bot_notification = {
+                    'type': 'create_embed',
+                    'recruitment_id': recruitment.id,
+                    'webhook_url': server_setting.webhook_url or '',
+                    'channel_id': discord_channel_id,
+                    'owner_avatar': owner_account.avatar or '',
+                    'owner_username': discord_owner_username,
+                }
+                r.publish('discord_bot_notifications', json.dumps(bot_notification))
+                print(f"✅ Redis通知送信: recruitment_id={recruitment.id}")
+            except Exception as redis_error:
+                print(f"⚠️ Redis通知エラー: {redis_error}")
+                # Redisエラーでも募集作成自体は成功とする
 
         return JsonResponse({
             'success': True,
             'recruitment': serializer.data,
+            'source': source,
         }, status=201)
     except json.JSONDecodeError:
         return JsonResponse({'error': '無効なJSON形式です'}, status=400)
