@@ -606,6 +606,7 @@ def discord_create_recruitment(request):
                     'owner_avatar': owner_account.avatar or '',
                     'owner_username': discord_owner_username,
                 }
+                print(f"📤 Redis通知データ: game={game.name}, server={discord_server_id}, channel={discord_channel_id}, webhook_url={bool(server_setting.webhook_url)}")
                 r.publish('discord_bot_notifications', json.dumps(bot_notification))
                 print(f"✅ Redis通知送信: recruitment_id={recruitment.id}")
             except Exception as redis_error:

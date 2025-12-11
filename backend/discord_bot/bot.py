@@ -864,6 +864,7 @@ async def handle_create_embed_notification(data: dict):
         owner_username = data.get('owner_username')
         
         print(f"🔧 Embed作成処理開始: recruitment_id={recruitment_id}")
+        print(f"📥 recieveddata: webhook_url={bool(webhook_url)}, channel={channel_id}, avatar={bool(owner_avatar)}, username={owner_username}")
         
         # バックエンドから募集詳細を取得
         async with aiohttp.ClientSession() as session:
