@@ -72,11 +72,14 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0f]/95 backdrop-blur-md border-b border-[var(--gaming-border)]">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between py-3">
-            {/* ロゴ - シンプルテキスト */}
+            {/* ロゴ - シンプルゲーミング */}
             <Link href="/" className="flex-shrink-0 group">
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#f9f3e3] rounded-lg border-2 border-[#8b7340] shadow-md">
-                <span className="handwritten-logo text-2xl font-bold italic tracking-wide">
-                  matcha-gg.com
+              <div className="flex items-center gap-1">
+                <span className="text-2xl font-black text-white tracking-tight">
+                  matcha
+                </span>
+                <span className="text-2xl font-black text-[var(--gaming-accent)] tracking-tight">
+                  .gg
                 </span>
               </div>
             </Link>
