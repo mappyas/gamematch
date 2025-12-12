@@ -20,13 +20,10 @@ urlpatterns = [
     path('api/games/', views.get_games, name='get_games'),
     
     # 募集
-    path('api/recruitments/', views.get_recruitments, name='get_recruitments'),
-    path('api/recruitments/cleanup/', views.cleanup_old_recruitments, name='cleanup_old_recruitments'),
-    path('api/recruitments/<int:recruitment_id>/', views.get_recruitment_detail, name='get_recruitment_detail'),
-    path('api/recruitments/<int:recruitment_id>/join/', views.join_recruitment, name='join_recruitment'),
-    path('api/recruitments/<int:recruitment_id>/leave/', views.leave_recruitment, name='leave_recruitment'),
-    path('api/recruitments/<int:recruitment_id>/close/', views.close_recruitment, name='close_recruitment'),
-    path('api/recruitments/<int:recruitment_id>/delete/', views.delete_recruitment, name='delete_recruitment'),
+    # path('api/recruitments/', views.get_recruitments, name='get_recruitments'),
+    # path('api/recruitments/<int:recruitment_id>/', views.get_recruitment_detail, name='get_recruitment_detail'),
+    # path('api/recruitments/<int:recruitment_id>/join/', views.join_recruitment, name='join_recruitment'),
+    # path('api/recruitments/<int:recruitment_id>/delete/', views.delete_recruitment, name='delete_recruitment'),
     
     # Riot API 連携
     path('api/riot/link/', views.link_riot_account, name='link_riot_account'),
@@ -47,10 +44,4 @@ urlpatterns = [
     path('api/discord/server/<str:server_id>/setting/', views.discord_get_server_setting, name='discord_get_server_setting'),
     path('api/discord/server/setting/', views.discord_set_server_setting, name='discord_set_server_setting'),
 
-    # Phase 3: VC参加記録と評価API
-    path('api/discord/vc/join/', views.record_vc_join, name='record_vc_join'),
-    path('api/discord/vc/leave/<int:participation_id>/', views.record_vc_leave, name='record_vc_leave'),
-    # path('api/discord/ratings/submit/', views.submit_rating, name='submit_rating'),
-    path('api/discord/recruitments/<int:recruitment_id>/vc-participants/', views.get_vc_participants, name='get_vc_participants'),
-    # path('api/discord/recruitments/<int:recruitment_id>/ratings/', views.get_user_ratings, name='get_user_ratings'),
 ]

@@ -154,231 +154,146 @@ def get_games(request):
     gamedata = [serialize_game(game) for game in games]
     return Response(gamedata)
 
-@api_view(['GET'])
-def get_recruitments(request):
-    """募集一覧を取得"""
-    try:
-        from .serializers import serialize_recruitment
-        from django.db.models import Prefetch
+# @api_view(['GET'])
+# def get_recruitments(request):
+#     """募集一覧を取得"""
+#     try:
+#         from .serializers import serialize_recruitment
+#         from django.db.models import Prefetch
         
-        recruitments = Recruitment.objects.filter(
-            status='open'
-        ).select_related('game', 'owner').prefetch_related(
-            Prefetch(
-                'participants',
-                queryset=Participant.objects.filter(status='joined').select_related('user')
-            )
-        ).order_by('-created_at')
+#         recruitments = Recruitment.objects.filter(
+#             status='open'
+#         ).select_related('game', 'owner').prefetch_related(
+#             Prefetch(
+#                 'participants',
+#                 queryset=Participant.objects.filter(status='joined').select_related('user')
+#             )
+#         ).order_by('-created_at')
         
-        # フィルタリング
-        game_slug = request.GET.get('game')
-        platform = request.GET.get('platform')
+#         # フィルタリング
+#         game_slug = request.GET.get('game')
+#         platform = request.GET.get('platform')
         
-        if game_slug:
-            recruitments = recruitments.filter(game__slug=game_slug)
-        if platform:
-            recruitments = recruitments.filter(platform=platform)
+#         if game_slug:
+#             recruitments = recruitments.filter(game__slug=game_slug)
+#         if platform:
+#             recruitments = recruitments.filter(platform=platform)
         
-        # 最大200件まで
-        recruitments = recruitments[:200]
+#         # 最大200件まで
+#         recruitments = recruitments[:200]
         
-        return JsonResponse({
-            'recruitments': [
-                serialize_recruitment(r, include_owner=True, include_participants=True) 
-                for r in recruitments
-            ]
-        })
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Get recruitments error: {str(e)}", exc_info=True)
-        return JsonResponse({'error': '募集一覧の取得に失敗しました'}, status=500)
+#         return JsonResponse({
+#             'recruitments': [
+#                 serialize_recruitment(r, include_owner=True, include_participants=True) 
+#                 for r in recruitments
+#             ]
+#         })
+#     except Exception as e:
+#         import logging
+#         logger = logging.getLogger(__name__)
+#         logger.error(f"Get recruitments error: {str(e)}", exc_info=True)
+#         return JsonResponse({'error': '募集一覧の取得に失敗しました'}, status=500)
 
-@api_view(['GET'])
-def get_recruitment_detail(request, recruitment_id):
-    """募集の詳細を取得"""
-    try:
-        from .serializers import serialize_recruitment
+# @api_view(['GET'])
+# def get_recruitment_detail(request, recruitment_id):
+#     """募集の詳細を取得"""
+#     try:
+#         from .serializers import serialize_recruitment
         
-        r = Recruitment.objects.select_related('game', 'owner').get(id=recruitment_id)
+#         r = Recruitment.objects.select_related('game', 'owner').get(id=recruitment_id)
         
-        return JsonResponse({
-            'recruitment': serialize_recruitment(
-                r, 
-                include_owner=True, 
-                include_participants=True
-            )
-        })
-    except Recruitment.DoesNotExist:
-        return JsonResponse({'error': '募集が見つかりません'}, status=404)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Get recruitment detail error: {str(e)}", exc_info=True)
-        return JsonResponse({'error': '募集詳細の取得に失敗しました'}, status=500)
+#         return JsonResponse({
+#             'recruitment': serialize_recruitment(
+#                 r, 
+#                 include_owner=True, 
+#                 include_participants=True
+#             )
+#         })
+#     except Recruitment.DoesNotExist:
+#         return JsonResponse({'error': '募集が見つかりません'}, status=404)
+#     except Exception as e:
+#         import logging
+#         logger = logging.getLogger(__name__)
+#         logger.error(f"Get recruitment detail error: {str(e)}", exc_info=True)
+#         return JsonResponse({'error': '募集詳細の取得に失敗しました'}, status=500)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def join_recruitment(request, recruitment_id):
-    """募集に参加"""
+# @api_view(['POST'])
+# @permission_classes([IsAuthenticated])
+# def join_recruitment(request, recruitment_id):
+#     """募集に参加"""
     
-    try:
-        recruitment = Recruitment.objects.select_related('game', 'owner').get(id=recruitment_id)
+#     try:
+#         recruitment = Recruitment.objects.select_related('game', 'owner').get(id=recruitment_id)
         
-        # チェック
-        if recruitment.owner == request.user:
-            return JsonResponse({'error': '自分の募集には参加できません'}, status=400)
+#         # チェック
+#         if recruitment.owner == request.user:
+#             return JsonResponse({'error': '自分の募集には参加できません'}, status=400)
         
-        if recruitment.status != 'open':
-            return JsonResponse({'error': 'この募集は締め切られています'}, status=400)
+#         if recruitment.status != 'open':
+#             return JsonResponse({'error': 'この募集は締め切られています'}, status=400)
         
-        if recruitment.is_full:
-            return JsonResponse({'error': '定員に達しています'}, status=400)
+#         if recruitment.is_full:
+#             return JsonResponse({'error': '定員に達しています'}, status=400)
         
-        # 既に参加していないかチェック（離脱した場合も含む）
-        participant, created = Participant.objects.get_or_create(
-            recruitment=recruitment,
-            user=request.user,
-            defaults={'status': 'joined'}
-        )
+#         # 既に参加していないかチェック（離脱した場合も含む）
+#         participant, created = Participant.objects.get_or_create(
+#             recruitment=recruitment,
+#             user=request.user,
+#             defaults={'status': 'joined'}
+#         )
         
-        if not created:
-            if participant.status == 'joined':
-                return JsonResponse({'error': '既に参加しています'}, status=400)
-            else:
-                # 離脱していた場合は再参加
-                participant.status = 'joined'
-                participant.save()
+#         if not created:
+#             if participant.status == 'joined':
+#                 return JsonResponse({'error': '既に参加しています'}, status=400)
+#             else:
+#                 # 離脱していた場合は再参加
+#                 participant.status = 'joined'
+#                 participant.save()
         
-        # 定員に達したら自動で締め切り
-        recruitment.refresh_from_db()
-        if recruitment.is_full:
-            recruitment.status = 'closed'
-            recruitment.save()
+#         # 定員に達したら自動で締め切り
+#         recruitment.refresh_from_db()
+#         if recruitment.is_full:
+#             recruitment.status = 'closed'
+#             recruitment.save()
         
-        return JsonResponse({
-            'success': True,
-            'current_players': recruitment.current_players,
-            'is_full': recruitment.is_full,
-        })
+#         return JsonResponse({
+#             'success': True,
+#             'current_players': recruitment.current_players,
+#             'is_full': recruitment.is_full,
+#         })
         
-    except Recruitment.DoesNotExist:
-        return JsonResponse({'error': '募集が見つかりません'}, status=404)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Join recruitment error: {str(e)}", exc_info=True)
-        return JsonResponse({'error': '参加処理に失敗しました'}, status=500)
+#     except Recruitment.DoesNotExist:
+#         return JsonResponse({'error': '募集が見つかりません'}, status=404)
+#     except Exception as e:
+#         import logging
+#         logger = logging.getLogger(__name__)
+#         logger.error(f"Join recruitment error: {str(e)}", exc_info=True)
+#         return JsonResponse({'error': '参加処理に失敗しました'}, status=500)
+
+# @api_view(['DELETE'])
+# @permission_classes([IsAuthenticated])
+# def delete_recruitment(request, recruitment_id):
+#     """募集を削除（オーナーのみ）"""
+#     try:
+#         recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
+        
+#         if recruitment.owner != request.user:
+#             return JsonResponse({'error': '権限がありません'}, status=403)
+        
+#         recruitment.delete()
+        
+#         return JsonResponse({'success': True})
+        
+#     except Recruitment.DoesNotExist:
+#         return JsonResponse({'error': '募集が見つかりません'}, status=404)
+#     except Exception as e:
+#         import logging
+#         logger = logging.getLogger(__name__)
+#         logger.error(f"Delete recruitment error: {str(e)}", exc_info=True)
+#         return JsonResponse({'error': '削除処理に失敗しました'}, status=500)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def leave_recruitment(request, recruitment_id):
-    """募集から離脱"""
-    try:
-        recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
-        
-        participant = Participant.objects.filter(
-            recruitment=recruitment,
-            user=request.user,
-            status='joined'
-        ).first()
-        
-        if not participant:
-            return JsonResponse({'error': '参加していません'}, status=400)
-        
-        participant.status = 'left'
-        participant.save()
-        
-        # 締め切りだった場合、再度募集中に
-        recruitment.refresh_from_db()
-        if recruitment.status == 'closed' and not recruitment.is_full:
-            recruitment.status = 'open'
-            recruitment.save()
-        
-        return JsonResponse({
-            'success': True,
-            'current_players': recruitment.current_players,
-            'is_full': recruitment.is_full,
-        })
-        
-    except Recruitment.DoesNotExist:
-        return JsonResponse({'error': '募集が見つかりません'}, status=404)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Leave recruitment error: {str(e)}", exc_info=True)
-        return JsonResponse({'error': '離脱処理に失敗しました'}, status=500)
 
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def close_recruitment(request, recruitment_id):
-    """募集を締め切り（オーナーのみ）"""
-    try:
-        recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
-        
-        if recruitment.owner != request.user:
-            return JsonResponse({'error': '権限がありません'}, status=403)
-        
-        if recruitment.status == 'closed':
-            return JsonResponse({'error': '既に締め切られています'}, status=400)
-        
-        recruitment.status = 'closed'
-        recruitment.save()
-        
-        return JsonResponse({'success': True})
-        
-    except Recruitment.DoesNotExist:
-        return JsonResponse({'error': '募集が見つかりません'}, status=404)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Close recruitment error: {str(e)}", exc_info=True)
-        return JsonResponse({'error': '締切処理に失敗しました'}, status=500)
-
-
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_recruitment(request, recruitment_id):
-    """募集を削除（オーナーのみ）"""
-    try:
-        recruitment = Recruitment.objects.select_related('game').get(id=recruitment_id)
-        
-        if recruitment.owner != request.user:
-            return JsonResponse({'error': '権限がありません'}, status=403)
-        
-        recruitment.delete()
-        
-        return JsonResponse({'success': True})
-        
-    except Recruitment.DoesNotExist:
-        return JsonResponse({'error': '募集が見つかりません'}, status=404)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Delete recruitment error: {str(e)}", exc_info=True)
-        return JsonResponse({'error': '削除処理に失敗しました'}, status=500)
-
-
-def cleanup_old_recruitments(request):
-    """古い募集を自動削除（Cron Job用）"""
-    from django.utils import timezone
-    from datetime import timedelta
-    
-    # 2時間以上経過した募集を削除
-    hours = int(request.GET.get('hours', 2))
-    cutoff_time = timezone.now() - timedelta(hours=hours)
-    
-    old_recruitments = Recruitment.objects.filter(created_at__lt=cutoff_time)
-    count = old_recruitments.count()
-    old_recruitments.delete()
-    
-    return JsonResponse({
-        'success': True,
-        'deleted_count': count,
-        'cutoff_hours': hours,
-    })
 
 # ================================================
 # 外部API連携
@@ -396,7 +311,7 @@ def discord_login(request):
     )
     return JsonResponse({'auth_url': discord_auth_url})
 
-# Discord OAutch2コールバック処理
+# 認証コード取得後、Discord OAutch2コールバック処理
 @api_view(['POST'])
 def discord_callback(request):
     try:
@@ -406,8 +321,7 @@ def discord_callback(request):
         if not code:
             return JsonResponse({'error': '認証コードがありません'}, status=400)
         
-        # 1. 認証コードをアクセストークンに交換
-        # Discord APIを使ってPost　結果をtoken_responseに格納
+        # 認証コードをアクセストークンに交換
         token_response = requests.post(
             f'{DISCORD_API_ENDPOINT}/oauth2/token',
             data={
@@ -431,7 +345,7 @@ def discord_callback(request):
         token_data = token_response.json()
         access_token = token_data['access_token']
         
-        # 2. アクセストークンでユーザー情報を取得
+        # アクセストークンでユーザー情報を取得
         user_response = requests.get(
             f'{DISCORD_API_ENDPOINT}/users/@me',
             headers={
@@ -456,7 +370,7 @@ def discord_callback(request):
         else:
             avatar_url = None
         
-        # 3. get_or_createでユーザーを作成または取得
+        # ユーザーを作成または取得
         account, created = Account.objects.get_or_create(
             discord_id=discord_id,
             defaults={
@@ -474,10 +388,9 @@ def discord_callback(request):
                 account.email = email
             account.save()
         
-        # 4. Djangoセッションにログイン
         login(request, account)
         
-        # 5. レスポンス
+        # レスポンス
         return JsonResponse({
             'success': True,
             'is_new_user': created,
@@ -606,11 +519,11 @@ def discord_create_recruitment(request):
                     'owner_avatar': owner_account.avatar or '',
                     'owner_username': discord_owner_username,
                 }
-                print(f"📤 Redis通知データ: game={game.name}, server={discord_server_id}, channel={discord_channel_id}, webhook_url={bool(server_setting.webhook_url)}")
+                print(f"Redis通知データ: game={game.name}, server={discord_server_id}, channel={discord_channel_id}, webhook_url={bool(server_setting.webhook_url)}")
                 r.publish('discord_bot_notifications', json.dumps(bot_notification))
-                print(f"✅ Redis通知送信: recruitment_id={recruitment.id}")
+                print(f"Redis通知送信: recruitment_id={recruitment.id}")
             except Exception as redis_error:
-                print(f"⚠️ Redis通知エラー: {redis_error}")
+                print(f"Redis通知エラー: {redis_error}")
                 # Redisエラーでも募集作成自体は成功とする
 
         return JsonResponse({
@@ -675,10 +588,8 @@ def discord_get_recruitment_detail(request, recruitment_id):
         return JsonResponse({'error': '募集の詳細の取得に失敗しました'}, status=500)
 
 @csrf_exempt
+@api_view(['POST'])
 def discord_join_recruitment(request,recruitment_id):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
-        
     try:
         data = json.loads(request.body)
 
@@ -733,6 +644,7 @@ def discord_join_recruitment(request,recruitment_id):
             return JsonResponse({'error': message}, status=400)
 
         try:
+            # Redis接続の環境変数設定、redis.Redisで接続
             import redis
             import os
             redis_host = os.environ.get('REDIS_HOST', '127.0.0.1')
@@ -844,16 +756,12 @@ def discord_leave_recruitment(request, recruitment_id):
         return JsonResponse({'error': '離脱処理に失敗しました'}, status=500)
 
 
-
-
 @csrf_exempt
+@api_view(['POST'])
 def discord_update_recruitment(request, recruitment_id):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
 
     try:
         data = json.loads(request.body)
-
         recruitment = DiscordRecruitment.objects.select_related('game').get(id=recruitment_id)
 
         if 'discord_message_id' in data:
@@ -1226,65 +1134,6 @@ def unlink_riot_account(request):
     except RiotAccount.DoesNotExist:
         return JsonResponse({'error': '連携されていません'}, status=400)
 
-@api_view(['POST'])
-def record_vc_join(request):
-    """VC参加記録API"""
-    serializer = VoiceChannelParticipationSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['POST'])
-def record_vc_leave(request, participation_id):
-    """VC退出記録API"""
-    try:
-        participation = VoiceChannelParticipation.objects.get(id=participation_id)
-        participation.left_at = timezone.now()
-        
-        # 滞在時間を計算（秒）
-        if participation.joined_at and participation.left_at:
-            duration = participation.left_at - participation.joined_at
-            participation.duration_seconds = int(duration.total_seconds())
-        
-        participation.save()
-        
-        serializer = VoiceChannelParticipationSerializer(participation)
-        return Response({
-            'participation': serializer.data,
-            'is_eligible_for_rating': participation.is_eligible_for_rating()
-        })
-    except VoiceChannelParticipation.DoesNotExist:
-        return Response({'error': '参加記録が見つかりません'}, status=status.HTTP_404_NOT_FOUND)
-
-
-# @api_view(['POST'])
-# def submit_rating(request):
-#     """ユーザー評価送信API"""
-#     serializer = UserRatingSerializer(data=request.data)
-#     if serializer.is_valid():
-#         # 既存の評価をチェック
-#         existing_rating = UserRating.objects.filter(
-#             recruitment_id=request.data.get('recruitment'),
-#             rater_discord_id=request.data.get('rater_discord_id'),
-#             rated_discord_id=request.data.get('rated_discord_id')
-#         ).first()
-        
-#         if existing_rating:
-#             # 既存の評価を更新
-#             for key, value in serializer.validated_data.items():
-#                 setattr(existing_rating, key, value)
-#             existing_rating.save()
-#             return Response(UserRatingSerializer(existing_rating).data)
-#         else:
-#             # 新規評価を作成
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 @api_view(['GET'])
 def get_vc_participants(request, recruitment_id):
     """募集のVC参加者一覧取得API"""
@@ -1296,14 +1145,3 @@ def get_vc_participants(request, recruitment_id):
     except DiscordRecruitment.DoesNotExist:
         return Response({'error': '募集が見つかりません'}, status=status.HTTP_404_NOT_FOUND)
 
-
-@api_view(['GET'])
-def get_user_ratings(request, recruitment_id):
-    """募集の評価一覧取得API"""
-    try:
-        recruitment = DiscordRecruitment.objects.get(id=recruitment_id)
-        ratings = UserRating.objects.filter(recruitment=recruitment)
-        serializer = UserRatingSerializer(ratings, many=True)
-        return Response(serializer.data)
-    except DiscordRecruitment.DoesNotExist:
-        return Response({'error': '募集が見つかりません'}, status=status.HTTP_404_NOT_FOUND)
