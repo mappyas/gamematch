@@ -449,6 +449,8 @@ def discord_get_recruitment_detail(request, recruitment_id):
 
 @csrf_exempt
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
 def discord_join_recruitment(request,recruitment_id):
     try:
         data = json.loads(request.body)
@@ -618,6 +620,8 @@ def discord_leave_recruitment(request, recruitment_id):
 
 @csrf_exempt
 @api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
 def discord_update_recruitment(request, recruitment_id):
 
     try:
