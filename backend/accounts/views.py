@@ -748,15 +748,7 @@ def discord_join_recruitment(request,recruitment_id):
 
             r.publish('discord_bot_notifications', json.dumps(bot_notification))
             
-            # 満員になったらVC招待送信イベントを通知
-            if recruitment.is_full:
-                full_notification = {
-                    'type': 'recruitment_full',
-                    'recruitment_id': recruitment.id,
-                    'discord_channel_id': recruitment.discord_channel_id,
-                }
-                r.publish('discord_bot_notifications', json.dumps(full_notification))
-                print(f"Published bot notification (full): {recruitment.id}")
+
                 
             print(f"Published bot notification: {recruitment_id}")
         except Exception as redis_error:
@@ -764,6 +756,17 @@ def discord_join_recruitment(request,recruitment_id):
         recruitment.refresh_from_db()
         from .serializers import DiscordRecruitmentSerializer
         serializer = DiscordRecruitmentSerializer(recruitment)
+
+        # 満員になったらVC招待送信イベントを通知
+        if recruitment.is_full:
+            full_notification = {
+                'type': 'recruitment_full',
+                'recruitment_id': recruitment.id,
+                'discord_channel_id': recruitment.discord_channel_id,
+                'data': serializer.data  # データを直接含める
+            }
+            r.publish('discord_bot_notifications', json.dumps(full_notification))
+            print(f"Published bot notification (full): {recruitment.id}")
 
         # WebSocket通知を送信
         try:

@@ -1158,17 +1158,25 @@ async def handle_recruitment_full_notification(data: dict):
     """満員通知処理（VC招待送信）"""
     try:
         recruitment_id = data.get('recruitment_id')
-        print(f"✅ 満員通知受信: recruitment_id={recruitment_id}")
+        recruitment_data = data.get('data') # バックエンドから渡されたデータを使用
         
-        # 最新の募集データを取得
-        async with aiohttp.ClientSession() as session:
-            url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/"
-            async with session.get(url) as response:
-                if response.status != 200:
-                    print(f"❌ 募集データ取得エラー: {response.status}")
-                    return
-                result = await response.json()
-                recruitment_data = result['recruitment']
+        if recruitment_data:
+            print(f"✅ 満員通知受信 (データあり): recruitment_id={recruitment_id}")
+        else:
+            print(f"⚠️ 満員通知受信 (データなし - API取得へ): recruitment_id={recruitment_id}")
+            # データがない場合はAPIから取得（フォールバック）
+            async with aiohttp.ClientSession() as session:
+                url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/"
+                async with session.get(url) as response:
+                    if response.status != 200:
+                        print(f"❌ 募集データ取得エラー: {response.status}")
+                        return
+                    result = await response.json()
+                    recruitment_data = result['recruitment']
+        
+        # デバッグログ
+        print(f"DEBUG: is_full={recruitment_data.get('is_full')}")
+        print(f"DEBUG: participants_count={len(recruitment_data.get('participants_list', []))}")
         
         # VC招待ロジックを実行
         await check_and_send_vc_invite(recruitment_data)
