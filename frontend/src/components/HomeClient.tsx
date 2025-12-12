@@ -110,7 +110,7 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
     console.log(myRecruitment);
     console.log(user);
     return (
-        <div className="min-h-screen text-white relative">
+        <div className="min-h-screen text-white relative flex flex-col">
             {/* 背景画像（selectedGameの画像） */}
             <div
                 className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
@@ -127,16 +127,10 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
             {/* ナビゲーションバー props*/}
             <Navbar games={games} selectedGame={selectedGame} onGameSelect={setSelectedGame} />
 
-            <main className="relative z-10 pt-28 pb-12">
+            <main className="relative z-10 pt-28 pb-12 flex-grow">
                 <div className="max-w-6xl mx-auto px-4">
-                    {/* 現在参加中のゲームバナー */}
-                    {myRecruitment && user && <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />}
-
-                    {/* ゲームトップ画像エリア */}
-                    {/* <GameImageSection
-                        key={`game-image-${selectedGame?.id}`}
-                        selectedGame={selectedGame}
-                    /> */}
+                    {/* 現在参加中のゲームバナー（参加していなくても表示） */}
+                    {user && <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />}
 
                     {/* 募集カード一覧 */}
                     <DiscordRecruitmentSection

@@ -43,14 +43,13 @@ function DiscordCallbackContent() {
 
         if (data.success) {
           setStatus('success');
-          
-          if (data.is_new_user || !data.is_profile_complete) {
-            setMessage('ログイン成功！プロフィール設定へ...');
-            setTimeout(() => router.push('/profile/setup'), 1500);
-          } else {
+          setTimeout(() => router.push('/'), 1500);
+
+          if (data.is_new_user) {
             setMessage('ログイン成功！');
             setTimeout(() => router.push('/'), 1500);
           }
+
         } else {
           setStatus('error');
           setMessage(data.error || 'ログインに失敗しました');

@@ -25,7 +25,7 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
             <div className="animate-slideUp">
                 <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                     <span className="text-[var(--gaming-accent)]">●</span>
-                    <span>Recruitments</span>
+                    <span>募集一覧</span>
                     <span className="text-sm text-[var(--gaming-text-sub)]">({filteredRecruitments.length})</span>
                 </h2>
 
@@ -35,14 +35,14 @@ export function DiscordRecruitmentSection({ recruitments, selectedGame, isLoadin
                     </div>
                 ) : filteredRecruitments.length === 0 ? (
                     <div className="text-center py-16 gaming-panel bg-[#1a1c24]/50">
-                        <p className="text-[var(--gaming-text-sub)] text-lg">No recruitments available for {selectedGame?.name ?? 'this game'}</p>
+                        <p className="text-[var(--gaming-text-sub)] text-lg">{selectedGame?.name ?? 'this game'}の募集は現在ありません</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {filteredRecruitments.slice(0, 3).map((recruitment) => (
                             <div
                                 key={recruitment.id}
-                                className="gaming-card p-5 cursor-pointer rounded-lg relative overflow-hidden group"
+                                className="border bg-[#1a1c24]/50 gaming-card p-5 cursor-pointer rounded-lg relative overflow-hidden group"
                                 onClick={() => setSelectedRecruitment(recruitment)}
                             >
                                 {/* カード上部のアクセントライン */}

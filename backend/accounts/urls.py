@@ -18,13 +18,7 @@ urlpatterns = [
 
     # ゲーム
     path('api/games/', views.get_games, name='get_games'),
-    
-    # 募集
-    # path('api/recruitments/', views.get_recruitments, name='get_recruitments'),
-    # path('api/recruitments/<int:recruitment_id>/', views.get_recruitment_detail, name='get_recruitment_detail'),
-    # path('api/recruitments/<int:recruitment_id>/join/', views.join_recruitment, name='join_recruitment'),
-    # path('api/recruitments/<int:recruitment_id>/delete/', views.delete_recruitment, name='delete_recruitment'),
-    
+        
     # Riot API 連携
     path('api/riot/link/', views.link_riot_account, name='link_riot_account'),
     path('api/riot/account/', views.get_riot_account, name='get_riot_account'),
