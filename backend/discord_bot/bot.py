@@ -29,7 +29,6 @@ intents.voice_states = True  # VC状態を監視（Phase 1で追加）
 # Botインスタンスを作成
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# ゲーム一覧（APIから取得するか、ハードコードするか）
 GAMES = []
 
 async def fetch_startup_data():
@@ -46,16 +45,18 @@ async def fetch_startup_data():
 # ゲーム選択用 Select Menu
 # ============================================
 
+"""
+ゲーム選択クラス
+/setupで呼び出し
+"""
 class GameSelect(discord.ui.Select):
-    """ゲーム選択ドロップダウン"""
     
     def __init__(self):
         options = [
             discord.SelectOption(
                 label=game["name"],
                 value=str(game["id"]),
-                description=f"{game['name']}をこのサーバーのゲームに設定",
-                default=(game["id"] == 1)  # APEXをデフォルト
+                description=f"{game['name']}をこのサーバーのゲームに設定"
             )
             for game in GAMES
         ]
@@ -66,8 +67,10 @@ class GameSelect(discord.ui.Select):
             options=options
         )
     
+    """
+    ゲーム選択時のコールバック処理
+    """
     async def callback(self, interaction: discord.Interaction):
-        """ゲーム選択時の処理"""
         game_id = int(self.values[0])
         game_name = next(g["name"] for g in GAMES if g["id"] == game_id)
         
@@ -102,9 +105,7 @@ class GameSelect(discord.ui.Select):
                     ephemeral=True
                 )
 
-
 class GameSelectView(discord.ui.View):
-    """ゲーム選択画面"""
     
     def __init__(self):
         super().__init__(timeout=60)
@@ -115,8 +116,11 @@ class GameSelectView(discord.ui.View):
 # 募集作成用 モーダル
 # ============================================
 
-class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成'):
-    """募集作成モーダル"""
+"""
+募集作成用モーダル
+/recruitで呼び出し
+"""
+class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成'): 
     
     def __init__(self, game_id: int, game_name: str, webhook_url: str = None):
         super().__init__()
@@ -147,7 +151,6 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        """モーダル送信時の処理"""
         await interaction.response.defer()
         
         if not self.slot_input.value.isdigit():
@@ -231,7 +234,6 @@ class RecruitmentModal(discord.ui.Modal, title='🎮 パーティ募集を作成
                                 }
                             ]
 
-                            # discord.pyのwebhookは時々username引数を無視するため、raw requestを使用
                             payload = {
                                 "username": interaction.user.display_name,
                                 "embeds": [embed.to_dict()],
@@ -412,7 +414,6 @@ class RecruitmentView(discord.ui.View):
 # ============================================
 
 def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> discord.Embed:
-    """募集情報のEmbedメッセージを作成"""
     title = recruitment_data.get('title', 'パーティ募集')
     rank = recruitment_data.get('rank', '')
     current_slots = recruitment_data.get('current_slots', 0)
@@ -1080,22 +1081,74 @@ async def handle_update_embed_notification(data: dict):
                 result = await response.json()
                 recruitment_data = result['recruitment']
         
+        
         # チャンネルとメッセージを取得
         channel = bot.get_channel(int(channel_id))
         if not channel:
             print(f"❌ チャンネルが見つかりません: {channel_id}")
             return
         
-        message = await channel.fetch_message(int(message_id))
+        # RecuritmentViewは使わず、直接Components JSONを構築
+        components = [
+            {
+                "type": 1,  # ACTION_ROW
+                "components": [
+                    {
+                        "type": 2,  # BUTTON
+                        "style": 5,  # LINK
+                        "label": "参加する",
+                        "url": f"https://matcha-gg.com/recruitment/{recruitment_id}?join=true"
+                    },
+                    {
+                        "type": 2,  # BUTTON
+                        "style": 5,  # LINK
+                        "label": "詳細を見る",
+                        "url": f"https://matcha-gg.com/recruitment/{recruitment_id}"
+                    }
+                ]
+            }
+        ]
         
-        # 新しいEmbedを作成して更新
+        # 新しいEmbedを作成
         game_name = recruitment_data.get('game_name', '')
         embed = create_recruitment_embed(recruitment_data, game_name)
-        view = RecruitmentView(recruitment_id, recruitment_data.get('max_slots', 4), 
-                               is_full=recruitment_data.get('is_full', False))
         
-        await message.edit(embed=embed, view=view)
-        print(f"✅ Embed更新完了: recruitment_id={recruitment_id}")
+        # Webhookを使ってメッセージを更新
+        # 通常のmessage.editではWebhook投稿メッセージを編集できない場合があるため
+        try:
+            # チャンネルの既存Webhookを取得
+            webhooks = await channel.webhooks()
+            matcha_webhook = None
+            for wh in webhooks:
+                if wh.name == "Matcha募集" and wh.user == bot.user:
+                    matcha_webhook = wh
+                    break
+            
+            if matcha_webhook:
+                # Webhook経由で更新 (Raw PATCH)
+                async with aiohttp.ClientSession() as session:
+                    payload = {
+                        "embeds": [embed.to_dict()],
+                        "components": components
+                    }
+                    async with session.patch(f"{matcha_webhook.url}/messages/{message_id}", json=payload) as response:
+                        if response.status in [200, 204]:
+                            print(f"✅ Webhook経由でEmbed更新完了: recruitment_id={recruitment_id}")
+                        else:
+                            text = await response.text()
+                            print(f"⚠️ Webhook更新エラー: {response.status} - {text}")
+            else:
+                # Webhookが見つからない場合は通常のeditを試みる（フォールバック）
+                message = await channel.fetch_message(int(message_id))
+                # Viewクラスが機能していないため、view=Noneで更新（ボタンが消える可能性ありだが、エラーよりマシ）
+                # もしdiscord.pyのViewが生きていればそれを使うべきだが、今は手動構築方針
+                await message.edit(embed=embed) 
+                print(f"⚠️ Webhookが見つからないため通常edit実行: recruitment_id={recruitment_id}")
+
+        except Exception as e:
+            print(f"❌ Embed更新エラー: {e}")
+            import traceback
+            traceback.print_exc()
         
     except Exception as e:
         print(f"❌ Embed更新エラー: {e}")
