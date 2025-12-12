@@ -8,6 +8,8 @@ import { Footer } from '@/components/Footer';
 import { Game, User } from '@/types/profile';
 import { DiscordRecruitment } from '@/types/discord';
 import { API_ENDPOINTS } from '@/lib/api';
+import Link from 'next/link';
+import { HeroSection } from '@/components/HeroSection';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
@@ -26,6 +28,7 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingGames, setIsLoadingGames] = useState(true);
     const [isConnected, setIsConnected] = useState(false);
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const wsRef = useRef<WebSocket | null>(null);
 
     // クライアント側でユーザー情報を取得（認証のため）
@@ -125,11 +128,21 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
             </div>
 
             {/* ナビゲーションバー props*/}
-            <Navbar games={games} selectedGame={selectedGame} onGameSelect={setSelectedGame} />
+            <Navbar
+                games={games}
+                selectedGame={selectedGame}
+                onGameSelect={setSelectedGame}
+                isAuthModalOpen={isAuthModalOpen}
+                onAuthModalOpenChange={setIsAuthModalOpen}
+            />
 
-            <main className="relative z-10 pt-28 pb-12 flex-grow">
-                <div className="max-w-6xl mx-auto px-4">
-                    {/* 現在参加中のゲームバナー（参加していなくても表示） */}
+            {!user && <HeroSection onLoginClick={() => setIsAuthModalOpen(true)} />}
+
+            <main className={`relative z-10 pb-12 flex-grow ${!user ? 'pt-12' : 'pt-28'}`}>
+                <div className="max-w-6xl mx-auto px-4 relative">
+                    <Link href="/guide" className="absolute top-0 right-4 text-sm text-[var(--gaming-text-sub)] hover:text-white transition-colors border border-[var(--gaming-border)] px-3 py-1 rounded">
+                        ガイド
+                    </Link>
                     {user && <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />}
 
                     {/* 募集カード一覧 */}

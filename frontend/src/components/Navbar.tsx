@@ -14,10 +14,12 @@ type NavbarProps = {
   games?: Game[];
   selectedGame?: Game;
   onGameSelect?: (game: Game) => void;
+  isAuthModalOpen: boolean;
+  onAuthModalOpenChange: (isOpen: boolean) => void;
 };
 
-export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+export function Navbar({ games = [], selectedGame, onGameSelect, isAuthModalOpen, onAuthModalOpenChange }: NavbarProps) {
+  // const [isModalOpen, setIsModalOpen] = useState(false); // Removed internal state
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -64,7 +66,7 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
   };
 
   const handleLogin = () => {
-    setIsModalOpen(true);
+    onAuthModalOpenChange(true);
   };
 
   return (
@@ -112,6 +114,11 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
             {/* 右側メニュー（ログイン/ユーザー） */}
             <div className="flex items-center gap-4">
               {/* 募集するボタン（デスクトップ） */}
+
+              <Link href="/guide" className="hidden md:flex items-center gap-2 gaming-button px-5 py-2 rounded-full text-sm shadow-md">
+                使い方
+              </Link>
+
               <button
                 onClick={() => setIsRecruitmentModalOpen(true)}
                 className="hidden md:flex items-center gap-2 gaming-button px-5 py-2 rounded-full text-sm shadow-md"
@@ -210,16 +217,17 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
                   ))}
                 </div>
 
-                <div className="pt-4 border-t border-[var(--gaming-border)] px-2">
+                <div className="pt-4 border-t border-[var(--gaming-border)] px-2 flex justify-center items-center gap-4">
                   <button
                     onClick={() => {
                       setIsRecruitmentModalOpen(true);
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full gaming-button py-2 rounded-lg text-sm flex items-center justify-center gap-2 mb-3"
+                    className="gaming-button py-2 rounded-lg text-sm mb-3"
                   >
                     <span>募集を作成する</span>
                   </button>
+                  <Link href="/guide" className="gaming-button py-2 rounded-lg text-sm mb-3">使い方</Link>
                 </div>
               </div>
             </div>
@@ -227,7 +235,7 @@ export function Navbar({ games = [], selectedGame, onGameSelect }: NavbarProps) 
         </div>
       </nav>
 
-      <AuthModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => onAuthModalOpenChange(false)} />
 
       {/* 募集モーダル - 一時的に無効化またはコメントアウト */}
 
