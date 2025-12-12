@@ -14,12 +14,23 @@ type NavbarProps = {
   games?: Game[];
   selectedGame?: Game;
   onGameSelect?: (game: Game) => void;
-  isAuthModalOpen: boolean;
-  onAuthModalOpenChange: (isOpen: boolean) => void;
+  isAuthModalOpen?: boolean;
+  onAuthModalOpenChange?: (isOpen: boolean) => void;
 };
 
-export function Navbar({ games = [], selectedGame, onGameSelect, isAuthModalOpen, onAuthModalOpenChange }: NavbarProps) {
-  // const [isModalOpen, setIsModalOpen] = useState(false); // Removed internal state
+export function Navbar({
+  games = [],
+  selectedGame,
+  onGameSelect,
+  isAuthModalOpen: externalIsAuthOpen,
+  onAuthModalOpenChange: externalOnAuthOpenChange
+}: NavbarProps) {
+  // 内部状態（Propsが提供されない場合のフォールバック）
+  const [internalIsAuthOpen, setInternalIsAuthOpen] = useState(false);
+
+  const isAuthOpen = externalIsAuthOpen ?? internalIsAuthOpen;
+  const onAuthOpenChange = externalOnAuthOpenChange ?? setInternalIsAuthOpen;
+
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -66,7 +77,7 @@ export function Navbar({ games = [], selectedGame, onGameSelect, isAuthModalOpen
   };
 
   const handleLogin = () => {
-    onAuthModalOpenChange(true);
+    onAuthOpenChange(true);
   };
 
   return (
@@ -86,7 +97,7 @@ export function Navbar({ games = [], selectedGame, onGameSelect, isAuthModalOpen
               </div>
             </Link>
 
-            {/* ゲームタブ（デスクトップ）- シンプルサークル */}
+            {/* ゲームタブ（デスクトップ） */}
             {games.length > 0 && (
               <div className="hidden md:flex flex-1 mx-6">
                 <div className="flex flex-wrap justify-center gap-3">
@@ -113,18 +124,20 @@ export function Navbar({ games = [], selectedGame, onGameSelect, isAuthModalOpen
 
             {/* 右側メニュー（ログイン/ユーザー） */}
             <div className="flex items-center gap-4">
-              {/* 募集するボタン（デスクトップ） */}
 
               <Link href="/guide" className="hidden md:flex items-center gap-2 gaming-button px-5 py-2 rounded-full text-sm shadow-md">
                 使い方
               </Link>
 
-              <button
-                onClick={() => setIsRecruitmentModalOpen(true)}
-                className="hidden md:flex items-center gap-2 gaming-button px-5 py-2 rounded-full text-sm shadow-md"
-              >
-                <span>募集する</span>
-              </button>
+              {/* 募集ボタン: ゲームデータがある場合のみ表示 */}
+              {games.length > 0 && (
+                <button
+                  onClick={() => setIsRecruitmentModalOpen(true)}
+                  className="hidden md:flex items-center gap-2 gaming-button px-5 py-2 rounded-full text-sm shadow-md"
+                >
+                  <span>募集する</span>
+                </button>
+              )}
 
               {/* モバイルメニューボタン */}
               <button
@@ -194,39 +207,44 @@ export function Navbar({ games = [], selectedGame, onGameSelect, isAuthModalOpen
           {/* モバイルメニュー */}
           {isMobileMenuOpen && (
             <div className="md:hidden py-4 border-t border-[var(--gaming-border)] animate-slideUp">
-              {/* ゲーム選択（モバイル） */}
               <div className="space-y-4">
-                <div className="text-xs font-bold text-[var(--gaming-text-sub)] uppercase px-2">Games</div>
-                <div className="flex flex-wrap gap-2 px-2">
-                  {games.map((game) => (
-                    <button
-                      key={game.id}
-                      onClick={() => {
-                        onGameSelect?.(game);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full
-                      ${selectedGame?.id === game.id
-                          ? 'bg-[var(--gaming-accent)]/10 text-[var(--gaming-accent)] border border-[var(--gaming-accent)]'
-                          : 'text-[var(--gaming-text-sub)] hover:bg-[#1a1c24] border border-transparent'
-                        }`}
-                    >
-                      <img src={game.icon} alt="" className="w-5 h-5 rounded-full" />
-                      <span>{game.name}</span>
-                    </button>
-                  ))}
-                </div>
+                {games.length > 0 && (
+                  <>
+                    <div className="text-xs font-bold text-[var(--gaming-text-sub)] uppercase px-2">Games</div>
+                    <div className="flex flex-wrap gap-2 px-2">
+                      {games.map((game) => (
+                        <button
+                          key={game.id}
+                          onClick={() => {
+                            onGameSelect?.(game);
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors w-full
+                            ${selectedGame?.id === game.id
+                              ? 'bg-[var(--gaming-accent)]/10 text-[var(--gaming-accent)] border border-[var(--gaming-accent)]'
+                              : 'text-[var(--gaming-text-sub)] hover:bg-[#1a1c24] border border-transparent'
+                            }`}
+                        >
+                          <img src={game.icon} alt="" className="w-5 h-5 rounded-full" />
+                          <span>{game.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 <div className="pt-4 border-t border-[var(--gaming-border)] px-2 flex justify-center items-center gap-4">
-                  <button
-                    onClick={() => {
-                      setIsRecruitmentModalOpen(true);
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="gaming-button py-2 rounded-lg text-sm mb-3"
-                  >
-                    <span>募集を作成する</span>
-                  </button>
+                  {games.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setIsRecruitmentModalOpen(true);
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="gaming-button py-2 rounded-lg text-sm mb-3"
+                    >
+                      <span>募集を作成する</span>
+                    </button>
+                  )}
                   <Link href="/guide" className="gaming-button py-2 rounded-lg text-sm mb-3">使い方</Link>
                 </div>
               </div>
@@ -235,16 +253,17 @@ export function Navbar({ games = [], selectedGame, onGameSelect, isAuthModalOpen
         </div>
       </nav>
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => onAuthModalOpenChange(false)} />
+      <AuthModal isOpen={isAuthOpen} onClose={() => onAuthOpenChange(false)} />
 
-      {/* 募集モーダル - 一時的に無効化またはコメントアウト */}
-
-      <RecruitmentModal
-        isOpen={isRecruitmentModalOpen}
-        onClose={() => setIsRecruitmentModalOpen(false)}
-        games={games}
-        user={user}
-      />
+      {/* 募集モーダル - ゲームデータがある場合のみレンダリング */}
+      {games.length > 0 && (
+        <RecruitmentModal
+          isOpen={isRecruitmentModalOpen}
+          onClose={() => setIsRecruitmentModalOpen(false)}
+          games={games}
+          user={user}
+        />
+      )}
     </>
   );
 }

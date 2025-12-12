@@ -30,6 +30,7 @@ intents.voice_states = True  # VC状態を監視（Phase 1で追加）
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 GAMES = []
+launcher_channels = {}  # {channel_id: {'panel': msg_id, 'spacer': msg_id}}
 
 async def fetch_startup_data():
     global GAMES
@@ -486,8 +487,71 @@ def create_recruitment_embed(recruitment_data: dict, game_name: str = '') -> dis
 
 
 # ============================================
+# 募集ランチャーパネル
+# ============================================
+
+class RecruitmentLauncher(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🎮 募集を作成する", style=discord.ButtonStyle.success, custom_id="launch_recruit_modal")
+    async def launch(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # サーバー設定を取得してモーダルを表示
+        async with aiohttp.ClientSession() as session:
+            url = f"{BACKEND_API_URL}/accounts/api/discord/server/{interaction.guild.id}/setting/"
+            try:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if not data.get('exists'):
+                            await interaction.response.send_message("⚠️ 設定が見つかりません", ephemeral=True)
+                            return
+                        
+                        setting = data['setting']
+                        modal = RecruitmentModal(
+                            setting['game_id'],
+                            setting['game_name'],
+                            setting.get('webhook_url', '')
+                        )
+                        await interaction.response.send_modal(modal)
+                    else:
+                        await interaction.response.send_message("❌ エラーが発生しました", ephemeral=True)
+            except Exception as e:
+                print(f"Launcher error: {e}")
+                await interaction.response.send_message("❌ 通信エラー", ephemeral=True)
+
+
+# ============================================
 # スラッシュコマンド（on_readyは末尾のRedis版を使用）
 # ============================================
+
+
+@bot.tree.command(name="panel", description="募集ランチャーパネルを設置します（管理者用）")
+async def panel(interaction: discord.Interaction):
+    """募集ランチャーパネル設置コマンド"""
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ このコマンドは管理者のみ使用できます", ephemeral=True)
+        return
+    
+    view = RecruitmentLauncher()
+    embed = discord.Embed(
+        title="募集中！",
+        description="下のボタンからパーティ募集を作成できます。",
+        color=discord.Color.green()
+    )
+    
+    await interaction.response.send_message("✅ パネルを設置しました", ephemeral=True)
+    
+    # パネル送信
+    panel_msg = await interaction.channel.send(embed=embed, view=view)
+    # スペーサー送信
+    spacer_msg = await interaction.channel.send("─────────────────────")
+    
+    # 登録
+    launcher_channels[interaction.channel.id] = {
+        'panel': panel_msg.id,
+        'spacer': spacer_msg.id
+    }
 
 @bot.tree.command(name="setup", description="このサーバーで使用するゲームを設定します（管理者用）")
 async def setup(interaction: discord.Interaction):
@@ -556,6 +620,66 @@ async def on_command_error(ctx, error):
     print(f'Error: {error}')
     await ctx.send(f'エラーが発生しました: {error}')
 
+
+# ============================================
+# Phase 1: VC管理機能
+# ============================================
+
+# ============================================
+# Sticky Message Logic
+# ============================================
+
+@bot.event
+async def on_message(message):
+    # Bot自身のメッセージは無視
+    if message.author == bot.user:
+        return
+
+    # コマンド処理
+    await bot.process_commands(message)
+    
+    # Sticky対象チャンネルか確認
+    if message.channel.id in launcher_channels:
+        # 少し待機（連投対策）
+        await asyncio.sleep(10)
+        
+        # 最新の状態を取得
+        current_data = launcher_channels.get(message.channel.id)
+        if not current_data:
+            return
+
+        channel = message.channel
+        
+        # 古いメッセージを削除
+        try:
+            if current_data.get('panel'):
+                old_panel = await channel.fetch_message(current_data['panel'])
+                await old_panel.delete()
+            if current_data.get('spacer'):
+                old_spacer = await channel.fetch_message(current_data['spacer'])
+                await old_spacer.delete()
+        except Exception as e:
+            print(f"Sticky delete error: {e}")
+            
+        # 新しいメッセージを送信
+        try:
+            view = RecruitmentLauncher()
+            embed = discord.Embed(
+                title="募集中！",
+                description="下のボタンからパーティ募集を作成できます。",
+                color=discord.Color.green()
+            )
+            
+            panel_msg = await channel.send(embed=embed, view=view)
+            spacer_msg = await channel.send("─────────────────────")
+            
+            # 更新
+            launcher_channels[channel.id] = {
+                'panel': panel_msg.id,
+                'spacer': spacer_msg.id
+            }
+        except Exception as e:
+            print(f"Sticky resend error: {e}")
 
 # ============================================
 # Phase 1: VC管理機能
