@@ -140,9 +140,7 @@ export function HomeClient({ initialRecruitments, initialUser }: HomeClientProps
 
             <main className={`relative z-10 pb-12 flex-grow ${!user ? 'pt-12' : 'pt-28'}`}>
                 <div className="max-w-6xl mx-auto px-4 relative">
-                    <Link href="/guide" className="absolute top-0 right-4 text-sm text-[var(--gaming-text-sub)] hover:text-white transition-colors border border-[var(--gaming-border)] px-3 py-1 rounded">
-                        ガイド
-                    </Link>
+
                     {user && <CurrentGameSection myRecruitment={myRecruitment} userdata={user} />}
 
                     {/* 募集カード一覧 */}
