@@ -628,11 +628,27 @@ async def create_private_vc_channel(guild, recruitment_data: dict):
 
         all_participants = [owner_id] + [p['discord_user_id'] for p in participants]
 
-        category = None
-        for cat in guild.categories:
-            if any('vc' in channel.name.lower() for channel in cat.voice_channels):
-                category = cat
-                break
+        if not guild:
+            # guildが取得できない場合はエラーとするか、処理を中断
+            print(f"❌ サーバー情報を取得できませんでした")
+            return None
+
+        # カテゴリ検索ロジックの改善
+        # 1. 名前で検索
+        category = discord.utils.get(guild.categories, name="ボイスチャンネル")
+        if not category:
+            category = discord.utils.get(guild.categories, name="Voice Channels")
+        
+        # 2. 既存のロジック（VCを含むカテゴリ）
+        if not category:
+            for cat in guild.categories:
+                if cat.voice_channels:
+                    category = cat
+                    break
+                    
+        # 3. それでもなければ適当なカテゴリ
+        if not category and guild.categories:
+             category = guild.categories[0]
         
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(
