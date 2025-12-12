@@ -864,76 +864,76 @@ async def check_and_send_vc_invite(recruitment_data: dict):
 # Phase 4: ユーザ評価システム
 # ============================================
 
-class RatingView(discord.ui.View):
-    """ユーザ評価用のUIView"""
+# class RatingView(discord.ui.View):
+#     """ユーザ評価用のUIView"""
     
-    def __init__(self, rated_users: list, recruitment_id: int):
-        super().__init__(timeout=1800)  # 30分タイムアウト
-        self.rated_users = rated_users  # 評価対象ユーザのリスト
-        self.recruitment_id = recruitment_id
-        self.ratings = {}  # {user_id: rating}
+#     def __init__(self, rated_users: list, recruitment_id: int):
+#         super().__init__(timeout=1800)  # 30分タイムアウト
+#         self.rated_users = rated_users  # 評価対象ユーザのリスト
+#         self.recruitment_id = recruitment_id
+#         self.ratings = {}  # {user_id: rating}
         
-        # デフォルトで全員を5つ星に設定
-        for user in rated_users:
-            self.ratings[user['discord_user_id']] = 5
+#         # デフォルトで全員を5つ星に設定
+#         for user in rated_users:
+#             self.ratings[user['discord_user_id']] = 5
     
-    @discord.ui.button(label='評価を送信', style=discord.ButtonStyle.green, emoji='✅')
-    async def submit_ratings(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """評価を送信"""
-        await interaction.response.defer(ephemeral=True)
+#     @discord.ui.button(label='評価を送信', style=discord.ButtonStyle.green, emoji='✅')
+#     async def submit_ratings(self, interaction: discord.Interaction, button: discord.ui.Button):
+#         """評価を送信"""
+#         await interaction.response.defer(ephemeral=True)
         
-        # バックエンドAPIに評価を送信
-        # 実際の実装ではAPIエンドポイントを作成
-        async with aiohttp.ClientSession() as session:
-            for user in self.rated_users:
-                rating_data = {
-                    'recruitment_id': self.recruitment_id,
-                    'rater_discord_id': str(interaction.user.id),
-                    'rater_discord_username': interaction.user.name,
-                    'rated_discord_id': user['discord_user_id'],
-                    'rated_discord_username': user['discord_username'],
-                    'rating': self.ratings.get(user['discord_user_id'], 5),
-                    'is_auto_submitted': False
-                }
-                url = f"{BACKEND_API_URL}/accounts/api/discord/ratings/submit/"
-                await session.post(url, json=rating_data)
-                print(f"📊 評価送信: {rating_data}")
+#         # バックエンドAPIに評価を送信
+#         # 実際の実装ではAPIエンドポイントを作成
+#         async with aiohttp.ClientSession() as session:
+#             for user in self.rated_users:
+#                 rating_data = {
+#                     'recruitment_id': self.recruitment_id,
+#                     'rater_discord_id': str(interaction.user.id),
+#                     'rater_discord_username': interaction.user.name,
+#                     'rated_discord_id': user['discord_user_id'],
+#                     'rated_discord_username': user['discord_username'],
+#                     'rating': self.ratings.get(user['discord_user_id'], 5),
+#                     'is_auto_submitted': False
+#                 }
+#                 url = f"{BACKEND_API_URL}/accounts/api/discord/ratings/submit/"
+#                 await session.post(url, json=rating_data)
+#                 print(f"📊 評価送信: {rating_data}")
         
-        await interaction.followup.send("✅ 評価を送信しました！", ephemeral=True)
-        self.stop()
+#         await interaction.followup.send("✅ 評価を送信しました！", ephemeral=True)
+#         self.stop()
     
-    async def on_timeout(self):
-        """30分後の自動送信"""
-        print(f"⏰ 評価が30分でタイムアウト、自動送信します (Recruitment #{self.recruitment_id})")
-        # デフォルト評価（全員5つ星）を自動送信
-        # 実際にはAPIに送信
+#     async def on_timeout(self):
+#         """30分後の自動送信"""
+#         print(f"⏰ 評価が30分でタイムアウト、自動送信します (Recruitment #{self.recruitment_id})")
+#         # デフォルト評価（全員5つ星）を自動送信
+#         # 実際にはAPIに送信
 
 
-async def send_rating_dm(user: discord.User, other_participants: list, recruitment_id: int):
-    """VC退出後に評価DMを送信"""
-    try:
-        if not other_participants:
-            return
+# async def send_rating_dm(user: discord.User, other_participants: list, recruitment_id: int):
+#     """VC退出後に評価DMを送信"""
+#     try:
+#         if not other_participants:
+#             return
         
-        embed = discord.Embed(
-            title="⭐ パーティメンバーを評価",
-            description="一緒にプレイしたメンバーを評価してください。\n評価しない場合、30分後に自動的に全員を★5で送信します。",
-            color=discord.Color.blue()
-        )
+#         embed = discord.Embed(
+#             title="⭐ パーティメンバーを評価",
+#             description="一緒にプレイしたメンバーを評価してください。\n評価しない場合、30分後に自動的に全員を★5で送信します。",
+#             color=discord.Color.blue()
+#         )
         
-        # 参加者リストを表示
-        participants_text = "\n".join([f"• {p['discord_username']}" for p in other_participants])
-        embed.add_field(name="メンバー", value=participants_text, inline=False)
-        embed.set_footer(text="デフォルトは全員★5です | 30分後に自動送信されます")
+#         # 参加者リストを表示
+#         participants_text = "\n".join([f"• {p['discord_username']}" for p in other_participants])
+#         embed.add_field(name="メンバー", value=participants_text, inline=False)
+#         embed.set_footer(text="デフォルトは全員★5です | 30分後に自動送信されます")
         
-        view = RatingView(other_participants, recruitment_id)
-        await user.send(embed=embed, view=view)
-        print(f"✅ {user.name} に評価DMを送信しました")
+#         view = RatingView(other_participants, recruitment_id)
+#         await user.send(embed=embed, view=view)
+#         print(f"✅ {user.name} に評価DMを送信しました")
         
-    except discord.Forbidden:
-        print(f"⚠️ {user.name} へのDM送信が拒否されました")
-    except Exception as e:
-        print(f"❌ 評価DM送信エラー: {e}")
+#     except discord.Forbidden:
+#         print(f"⚠️ {user.name} へのDM送信が拒否されました")
+#     except Exception as e:
+#         print(f"❌ 評価DM送信エラー: {e}")
 
 
 # ============================================

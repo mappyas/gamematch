@@ -1259,30 +1259,30 @@ def record_vc_leave(request, participation_id):
         return Response({'error': '参加記録が見つかりません'}, status=status.HTTP_404_NOT_FOUND)
 
 
-@api_view(['POST'])
-def submit_rating(request):
-    """ユーザー評価送信API"""
-    serializer = UserRatingSerializer(data=request.data)
-    if serializer.is_valid():
-        # 既存の評価をチェック
-        existing_rating = UserRating.objects.filter(
-            recruitment_id=request.data.get('recruitment'),
-            rater_discord_id=request.data.get('rater_discord_id'),
-            rated_discord_id=request.data.get('rated_discord_id')
-        ).first()
+# @api_view(['POST'])
+# def submit_rating(request):
+#     """ユーザー評価送信API"""
+#     serializer = UserRatingSerializer(data=request.data)
+#     if serializer.is_valid():
+#         # 既存の評価をチェック
+#         existing_rating = UserRating.objects.filter(
+#             recruitment_id=request.data.get('recruitment'),
+#             rater_discord_id=request.data.get('rater_discord_id'),
+#             rated_discord_id=request.data.get('rated_discord_id')
+#         ).first()
         
-        if existing_rating:
-            # 既存の評価を更新
-            for key, value in serializer.validated_data.items():
-                setattr(existing_rating, key, value)
-            existing_rating.save()
-            return Response(UserRatingSerializer(existing_rating).data)
-        else:
-            # 新規評価を作成
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         if existing_rating:
+#             # 既存の評価を更新
+#             for key, value in serializer.validated_data.items():
+#                 setattr(existing_rating, key, value)
+#             existing_rating.save()
+#             return Response(UserRatingSerializer(existing_rating).data)
+#         else:
+#             # 新規評価を作成
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
     
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
