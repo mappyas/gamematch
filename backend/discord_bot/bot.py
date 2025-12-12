@@ -578,32 +578,17 @@ async def on_voice_state_update(member, before, after):
         # await send_rating_dm_after_vc(member, before.channel)
 
 
-async def send_vc_invite_to_participants(recruitment_id: int, guild_id: int, participant_ids: list):
+async def send_vc_invite_to_participants(vc_channel, participant_ids: list):
     """募集参加者にVC招待URLをDM送信"""
     try:
-        guild = bot.get_guild(int(guild_id))
-        if not guild:
-            print(f"❌ サーバーが見つかりません: {guild_id}")
-            return
-        
-        # 空いているVCを検索（カテゴリ内の空のVCを探す）
-        # 実際の実装では、DiscordServerSetting から voice_category_id を取得して使用
-        available_vc = None
-        for channel in guild.voice_channels:
-            if len(channel.members) == 0:  # 空のVCを見つけた
-                available_vc = channel
-                break
-        
-        if not available_vc:
-            print("❌ 空いているVCが見つかりません")
-            return
-        
         # 30分期限の招待URLを生成
-        invite = await available_vc.create_invite(
+        invite = await vc_channel.create_invite(
             max_age=1800,  # 30分
-            max_uses=len(participant_ids),  # 参加者数分
+            max_uses=len(participant_ids) + 5,  # 参加者数分 + 予備
             unique=True
         )
+        
+        print(f"📢 VC招待URLを生成しました: {invite.url}")
         
         # 各参加者にDM送信
         for user_id in participant_ids:
@@ -614,7 +599,7 @@ async def send_vc_invite_to_participants(recruitment_id: int, guild_id: int, par
                     description=f"募集が満員になりました！\n下記のリンクからボイスチャットに参加してください。",
                     color=discord.Color.green()
                 )
-                embed.add_field(name="ボイスチャンネル", value=available_vc.name, inline=False)
+                embed.add_field(name="ボイスチャンネル", value=vc_channel.name, inline=False)
                 embed.add_field(name="招待リンク", value=invite.url, inline=False)
                 embed.set_footer(text="招待リンクは30分間有効です")
                 
@@ -624,11 +609,11 @@ async def send_vc_invite_to_participants(recruitment_id: int, guild_id: int, par
                 print(f"⚠️ {user_id} へのDM送信が拒否されました")
             except Exception as e:
                 print(f"❌ DM送信エラー ({user_id}): {e}")
-        
-        print(f"📢 VC招待URLを送信しました: {available_vc.name}")
-        
+                
     except Exception as e:
         print(f"❌ VC招待送信エラー: {e}")
+        import traceback
+        traceback.print_exc()
 
 async def create_private_vc_channel(guild, recruitment_data: dict):
     """募集用のプライベートVCチャンネルを作成"""
@@ -807,18 +792,56 @@ async def before_cleanup():
 async def check_and_send_vc_invite(recruitment_data: dict):
     """募集が満員になったらVC招待を送信"""
     if recruitment_data.get('is_full'):
-        # 参加者のDiscord IDリストを取得
-        participants = recruitment_data.get('participants_list', [])
-        owner_id = recruitment_data.get('discord_owner_id')
-        
-        # 募集者も含める
-        all_participants = [owner_id] + [p['discord_user_id'] for p in participants]
-        
-        guild_id = recruitment_data.get('discord_server_id')
-        recruitment_id = recruitment_data.get('id')
-        
-        # VC招待を送信
-        await send_vc_invite_to_participants(recruitment_id, guild_id, all_participants)
+        try:
+            guild_id = recruitment_data.get('discord_server_id')
+            guild = bot.get_guild(int(guild_id))
+            if not guild:
+                print(f"❌ サーバーが見つかりません: {guild_id}")
+                return
+
+            recruitment_id = recruitment_data.get('id')
+            vc_channel_id = recruitment_data.get('vc_channel_id')
+            vc_channel = None
+
+            # 既存のVCチャンネルを取得
+            if vc_channel_id:
+                vc_channel = guild.get_channel(int(vc_channel_id))
+            
+            # VCがない場合は新規作成
+            if not vc_channel:
+                print(f"🔧 プライベートVCを作成します: {recruitment_id}")
+                vc_channel = await create_private_vc_channel(guild, recruitment_data)
+                
+                if vc_channel:
+                    # Backendに作成したVC IDを保存
+                    try:
+                        async with aiohttp.ClientSession() as session:
+                            url = f"{BACKEND_API_URL}/accounts/api/discord/recruitments/{recruitment_id}/update/"
+                            update_data = {'vc_channel_id': str(vc_channel.id)}
+                            async with session.post(url, json=update_data) as response:
+                                if response.status == 200:
+                                    print(f"✅ VCチャンネルID保存: {vc_channel.id}")
+                                else:
+                                    print(f"⚠️ VCチャンネルID保存失敗: {response.status}")
+                    except Exception as api_error:
+                         print(f"❌ API保存エラー: {api_error}")
+
+            if vc_channel:
+                # 参加者のDiscord IDリストを取得
+                participants = recruitment_data.get('participants_list', [])
+                owner_id = recruitment_data.get('discord_owner_id')
+                # 募集者も含める
+                all_participants = [owner_id] + [p['discord_user_id'] for p in participants]
+                
+                # VC招待を送信
+                await send_vc_invite_to_participants(vc_channel, all_participants)
+            else:
+                 print(f"❌ VCチャネルの取得・作成に失敗しました")
+                 
+        except Exception as e:
+            print(f"❌ check_and_send_vc_invite Error: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 #  ============================================
